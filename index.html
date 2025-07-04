@@ -1,20 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Afsprakenkaart met operator-kleuren</title>
+  <title>Afsprakenkaart zonder kleur</title>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Font Awesome (voor user icon) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
-  <!-- Leaflet Awesome Markers -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.5/leaflet.awesome-markers.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.5/leaflet.awesome-markers.js"></script>
 
   <style>
     body { font-family: sans-serif; margin: 0; padding: 0; }
@@ -44,19 +37,6 @@
   let map;
   let allMarkers = [];
   let afsprakenData = [];
-
-  const operatorKleuren = {
-    'Roelof': 'red',
-    'Jesse': 'blue',
-    'Chanice': 'purple',
-    'Karlijn': 'pink',
-    'Civan': 'green',
-    'Keith': 'yellow'
-  };
-
-  function getKleurVoorOperator(naam) {
-    return operatorKleuren[naam] || 'gray';
-  }
 
   async function initMap() {
     map = L.map('map').setView([52.1, 5.1], 7);
@@ -134,23 +114,13 @@
     });
 
     gefilterd.forEach(a => {
-      const hoofdOperator = a.operators[0];
-      const kleur = getKleurVoorOperator(hoofdOperator);
-
-      const markerIcon = L.AwesomeMarkers.icon({
-        icon: 'user',
-        markerColor: kleur,
-        prefix: 'fa'
-      });
-
-      const marker = L.marker([a.lat, a.lon], { icon: markerIcon }).addTo(map);
+      const marker = L.marker([a.lat, a.lon]).addTo(map);
       marker.bindPopup(`
         <strong>${a.operators.join(', ')}</strong><br>
         ${a.adres}<br>
         ${a.datum} ${a.tijd}<br>
         Status: ${a.status}
       `);
-
       allMarkers.push(marker);
     });
   }
