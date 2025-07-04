@@ -1,106 +1,107 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
+  <title>Afsprakenkaart Voltsmart - Snel laden</title>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voltsmart Afsprakenkaart</title>
-
-  <!-- Leaflet CSS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Leaflet CSS & JS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    crossorigin=""
   />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     body {
+      font-family: "Poppins", sans-serif;
       margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 0;
       background: #f8f9fa;
-      color: #003566; /* VoltSmart donkerblauw */
+      color: #212529;
     }
-    header {
-      background: #00b0ff; /* VoltSmart blauw */
+    #header {
+      background: #003366; /* Voltsmart donkerblauw */
+      color: white;
+      padding: 0.5rem 1rem;
       display: flex;
       align-items: center;
-      padding: 10px 20px;
-      gap: 15px;
-      box-shadow: 0 2px 5px rgb(0 0 0 / 0.1);
+      gap: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    header img {
+    #header img {
       height: 40px;
-      user-select: none;
     }
-    header h1 {
-      font-weight: 600;
+    #header h1 {
+      font-weight: 700;
       font-size: 1.5rem;
       margin: 0;
-      color: white;
     }
-
     #controls {
-      padding: 10px 20px;
+      padding: 1rem;
       background: white;
       display: flex;
-      gap: 1rem;
+      gap: 1.5rem;
       align-items: center;
       flex-wrap: wrap;
-      border-bottom: 2px solid #00b0ff;
+      border-bottom: 1px solid #dee2e6;
     }
     label {
       font-weight: 600;
-      color: #003566;
+      color: #003366;
     }
     select {
-      padding: 5px 8px;
-      border: 1px solid #ccc;
+      padding: 0.3rem 0.5rem;
       border-radius: 4px;
+      border: 1px solid #ced4da;
       font-size: 1rem;
-      color: #003566;
-      background: #e9f5ff;
-      cursor: pointer;
-      min-width: 120px;
+      min-width: 140px;
     }
-
     #map {
-      height: 90vh;
+      height: 85vh;
       width: 100%;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
     }
-
     /* Emoji marker style */
     .emoji-div-icon {
-      font-size: 24px;
-      line-height: 24px;
+      font-size: 26px;
+      line-height: 26px;
       text-align: center;
       user-select: none;
+      font-weight: 700;
+      text-shadow:
+        -1px -1px 0 #fff,
+         1px -1px 0 #fff,
+        -1px  1px 0 #fff,
+         1px  1px 0 #fff;
     }
-
     /* Popup styling */
     .leaflet-popup-content-wrapper {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 14px;
-      color: #003566;
-      font-weight: 600;
+      border-radius: 8px;
+      border: 2px solid #003366;
+      font-family: "Poppins", sans-serif;
+      font-size: 0.95rem;
+      color: #003366;
     }
     .leaflet-popup-content strong {
       font-size: 1.1rem;
-      color: #00b0ff;
+      color: #0077cc;
     }
   </style>
 </head>
 <body>
-  <header>
-    <img src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart logo" />
-    <h1>Voltsmart Afsprakenkaart</h1>
-  </header>
+  <div id="header">
+    <img src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart Logo" />
+    <h1>Afsprakenkaart Voltsmart</h1>
+  </div>
 
   <div id="controls">
-    <label for="datumSelect">📅 Datum: </label>
+    <label for="datumSelect">📅 Datum:</label>
     <select id="datumSelect">
       <option value="">-- Alles --</option>
     </select>
 
-    <label for="operatorSelect">👤 Operator: </label>
+    <label for="operatorSelect">👤 Operator:</label>
     <select id="operatorSelect">
       <option value="">-- Iedereen --</option>
     </select>
@@ -108,11 +109,11 @@
 
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const sheetURL =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
 
+    // Emoji per operator
     const operatorEmoji = {
       Roelof: "🔴",
       Jesse: "🔵",
@@ -120,7 +121,7 @@
       Karlijn: "🌸",
       Civan: "🟢",
       Keith: "🟡",
-      Gio: "🟠",
+      Gio: "🟠"
     };
 
     let map;
@@ -130,15 +131,11 @@
     async function initMap() {
       map = L.map("map").setView([52.1, 5.1], 7);
 
-      // CartoDB Positron tile layer (lichte, simpele kaart)
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution:
-            '&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
-          maxZoom: 18,
-        }
-      ).addTo(map);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 18,
+      }).addTo(map);
 
       await loadAfspraken();
       buildFilters();
@@ -148,51 +145,50 @@
     async function loadAfspraken() {
       const res = await fetch(sheetURL);
       const csvText = await res.text();
-      const rows = csvText.split("\n").slice(1);
 
+      // Parse CSV to rows
+      const rows = csvText.trim().split("\n");
+      // Headers: datum,medewerker,adres,status,tijd,lat,lon
+      const headers = rows[0].split(",");
       afsprakenData = [];
 
-      for (const row of rows) {
-        const [datum, medewerker, adres, status, tijd] = row.split(",");
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i].split(",");
 
-        if (!adres || !datum || !medewerker || !tijd) continue;
+        // Haal kolommen op basis van header index
+        const datum = row[headers.indexOf("datum")]?.trim();
+        const medewerker = row[headers.indexOf("medewerker")]?.trim();
+        const adres = row[headers.indexOf("adres")]?.trim();
+        const status = row[headers.indexOf("status")]?.trim();
+        const tijd = row[headers.indexOf("tijd")]?.trim();
+        const lat = parseFloat(row[headers.indexOf("lat")]?.trim());
+        const lon = parseFloat(row[headers.indexOf("lon")]?.trim());
 
-        // Gebruik een simpele (maar trage) geocoding via Nominatim
-        const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          adres
-        )}`;
+        // Skip als lat/lon ontbreken of datum ontbreekt
+        if (!lat || !lon || !datum) continue;
 
-        try {
-          const geoRes = await fetch(geoURL, {
-            headers: { "User-Agent": "voltsmart-afsprakenkaart" },
-          });
-          const geoData = await geoRes.json();
+        // Operators kunnen gescheiden zijn door komma's, maak array
+        const operators = medewerker.split(",").map(op => op.trim());
 
-          if (geoData.length > 0) {
-            const { lat, lon } = geoData[0];
-            const operators = medewerker.split(",").map((o) => o.trim());
-            afsprakenData.push({
-              datum,
-              tijd,
-              operators,
-              adres,
-              status,
-              lat: parseFloat(lat),
-              lon: parseFloat(lon),
-            });
-          }
-        } catch (e) {
-          console.error("Fout bij geocoding:", e);
-        }
+        afsprakenData.push({
+          datum,
+          tijd,
+          operators,
+          adres,
+          status,
+          lat,
+          lon
+        });
       }
     }
 
-    function maakEmojiMarker(emoji) {
+    // Maak emoji marker met nummer
+    function maakEmojiMarker(emoji, nummer) {
       return L.divIcon({
         className: "emoji-div-icon",
-        html: emoji,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+        html: `<span style="font-weight:bold;">${nummer}</span>${emoji}`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
       });
     }
 
@@ -200,17 +196,21 @@
       const datumSelect = document.getElementById("datumSelect");
       const operatorSelect = document.getElementById("operatorSelect");
 
-      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort();
-      uniekeDatums.forEach((d) => {
+      // Unieke datums
+      const uniekeDatums = [...new Set(afsprakenData.map(a => a.datum))].sort(
+        (a, b) => new Date(a.split("-").reverse().join("-")) - new Date(b.split("-").reverse().join("-"))
+      );
+      uniekeDatums.forEach(d => {
         const opt = document.createElement("option");
         opt.value = d;
         opt.textContent = d;
         datumSelect.appendChild(opt);
       });
 
-      const allOps = afsprakenData.flatMap((a) => a.operators);
+      // Unieke operators
+      const allOps = afsprakenData.flatMap(a => a.operators);
       const uniekeOperators = [...new Set(allOps)].sort();
-      uniekeOperators.forEach((o) => {
+      uniekeOperators.forEach(o => {
         const opt = document.createElement("option");
         opt.value = o;
         opt.textContent = o;
@@ -225,21 +225,45 @@
       const datum = document.getElementById("datumSelect").value.trim();
       const operator = document.getElementById("operatorSelect").value.trim();
 
-      allMarkers.forEach((marker) => map.removeLayer(marker));
+      // Verwijder oude markers
+      allMarkers.forEach(m => map.removeLayer(m));
       allMarkers = [];
 
-      const gefilterd = afsprakenData.filter((a) => {
-        const datumMatch = !datum || a.datum.trim() === datum;
+      // Filter data
+      const gefilterd = afsprakenData.filter(a => {
+        const datumMatch = !datum || a.datum === datum;
         const operatorMatch = !operator || a.operators.includes(operator);
         return datumMatch && operatorMatch;
       });
 
-      gefilterd.forEach((a) => {
+      // Groepeer afspraken per operator
+      const afsprakenPerOperator = {};
+      gefilterd.forEach(a => {
+        a.operators.forEach(op => {
+          if (!afsprakenPerOperator[op]) afsprakenPerOperator[op] = [];
+          afsprakenPerOperator[op].push(a);
+        });
+      });
+
+      // Sorteer per operator op tijd (hh:mm) en geef nummer
+      for (const op in afsprakenPerOperator) {
+        afsprakenPerOperator[op].sort((a, b) => {
+          const t1 = a.tijd || "00:00";
+          const t2 = b.tijd || "00:00";
+          return t1.localeCompare(t2);
+        });
+      }
+
+      // Voeg markers toe met nummering voor eerste operator
+      gefilterd.forEach(a => {
         const hoofdOperator = a.operators[0];
         const emoji = operatorEmoji[hoofdOperator] || "⚪";
 
+        // Nummer van deze afspraak voor de operator
+        const nummer = afsprakenPerOperator[hoofdOperator]?.indexOf(a) + 1 || 0;
+
         const marker = L.marker([a.lat, a.lon], {
-          icon: maakEmojiMarker(emoji),
+          icon: maakEmojiMarker(emoji, nummer),
         }).addTo(map);
 
         marker.bindPopup(`
@@ -251,8 +275,17 @@
 
         allMarkers.push(marker);
       });
+
+      // Zoom naar alle markers of standaard view
+      if (allMarkers.length > 0) {
+        const group = new L.featureGroup(allMarkers);
+        map.fitBounds(group.getBounds().pad(0.2));
+      } else {
+        map.setView([52.1, 5.1], 7);
+      }
     }
 
+    // Start kaart
     initMap();
   </script>
 </body>
