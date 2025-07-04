@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Afsprakenkaart (Leaflet)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { font-family: sans-serif; }
+    #map { height: 90vh; width: 100%; }
+  </style>
+</head>
+<body>
+
+<h2>Afsprakenkaart – Gratis versie (Leaflet + OSM)</h2>
+<div id="map"></div>
+
+<script>
+  const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?gid=0&single=true&output=csv';
+
+  const map = L.map('map').setView([52.1, 5.1], 7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Kaartgegevens © OpenStreetMap',
+    maxZoom: 18,
+  }).addTo(map);
+
+  async function loadAfspraken() {
+    const res = await fetch(sheetURL);
+    const csvText = await res.text();
+    const rows = csvText.split('\n').slice(1);
+
+    for (const row of rows) {
+      const [datum, medewerker, adres, status] = row.split(',');
+
+      if (!adres) continue;
+
+      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}`;
+
+      const geoRes = await fetch(geoURL, { headers: { 'User-Agent': 'afspraken-tool-demo' } });
+      const geoData = await geoRes.json();
+
+      if (geoData.length > 0) {
+        const lat = parseFloat(geoData[0].lat);
+        const lon = parseFloat(geoData[0].lon);
+
+        const marker = L.marker([lat, lon]).addTo(map);
+        marker.bindPopup(`<strong>${medewerker}</strong><br>${adres}<br>${datum}<br>Status: ${status}`);
+      }
+    }
+  }
+
+  loadAfspraken();
+</script>
+
+</body>
+</html>
