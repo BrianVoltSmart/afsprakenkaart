@@ -37,6 +37,8 @@
     #logo {
       height: 40px;
       user-select: none;
+      margin: 0 auto;
+      display: block;
     }
     #controls {
       padding: 10px 20px;
@@ -140,37 +142,36 @@
       afsprakenData = [];
 
       for (const row of rows) {
-        const [datum, medewerker, adres, status, tijd] = row.split(",");
+        const cols = row.split(",");
+        const datum = cols[0]?.trim();
+        const medewerker = cols[1]?.trim();
+        const adres = cols[2]?.trim();
+        const status = cols[3]?.trim();
+        const tijd = cols[4]?.trim();
+        const lat = parseFloat(cols[7]);
+        const lon = parseFloat(cols[8]);
 
-        if (!adres || !datum || !medewerker || !tijd) continue;
+        if (
+          !adres ||
+          !datum ||
+          !medewerker ||
+          !tijd ||
+          isNaN(lat) ||
+          isNaN(lon)
+        )
+          continue;
 
-        // Adres netjes met komma's gescheiden, kan aanpassen hier als nodig
-        // Hier gebruiken we adres zoals in sheet (je kan dit uitbreiden)
-        const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          adres
-        )}`;
-        try {
-          const geoRes = await fetch(geoURL, {
-            headers: { "User-Agent": "afspraken-tool-demo" },
-          });
-          const geoData = await geoRes.json();
+        const operators = medewerker.split(",").map((o) => o.trim());
 
-          if (geoData.length > 0) {
-            const { lat, lon } = geoData[0];
-            const operators = medewerker.split(",").map((o) => o.trim());
-            afsprakenData.push({
-              datum,
-              tijd,
-              operators,
-              adres,
-              status,
-              lat: parseFloat(lat),
-              lon: parseFloat(lon),
-            });
-          }
-        } catch (e) {
-          console.error("Fout bij geocoding:", e);
-        }
+        afsprakenData.push({
+          datum,
+          tijd,
+          operators,
+          adres,
+          status,
+          lat,
+          lon,
+        });
       }
     }
 
@@ -216,7 +217,7 @@
       allMarkers = [];
 
       const gefilterd = afsprakenData.filter((a) => {
-        const datumMatch = !datum || a.datum.trim() === datum;
+        const datumMatch = !datum || a.datum === datum;
         const operatorMatch = !operator || a.operators.includes(operator);
         return datumMatch && operatorMatch;
       });
@@ -253,13 +254,19 @@
             afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
         }
 
-        const marker = L.marker([a.lat, a.lon], {
+        // Adres zonder postcode (als postcode de laatste 'woord' is)
+        const adresZonderPostcode = a.adres
+          .split(" ")
+          .filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w))
+          .join(" ");
+
+        marker = L.marker([a.lat, a.lon], {
           icon: maakEmojiMarker(emoji),
         }).addTo(map);
 
         marker.bindPopup(`
           <strong>${nummering}${a.operators.join(", ")}</strong><br>
-          ${a.adres}<br>
+          ${adresZonderPostcode}<br>
           ${a.datum} ${a.tijd}<br>
           ${a.status ? `Status: ${a.status}` : ""}
         `);
