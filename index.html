@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Afsprakenkaart</title>
+  <title>Afsprakenkaart met emoji-markers</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet CSS & JS -->
+  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -14,81 +14,78 @@
 
   <style>
     body {
+      font-family: "Inter", sans-serif;
       margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #fff;
+      padding: 0;
+      background-color: #121212;
+      color: #eee;
     }
-    header {
-      height: 60px;
-      background-color: #0064ff; /* VoltSmart blauw */
+    #topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 15px;
-      color: white;
-      position: relative;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      background-color: #0d1b2a;
+      padding: 0.5rem 1rem;
+      height: 60px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.7);
     }
-    header h1 {
-      margin: 0;
-      font-weight: 600;
-      font-size: 20px;
-      user-select: none;
-      flex: 1;
-      text-align: left;
-    }
-    header .logo {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
+    #logo {
       height: 40px;
+      margin: 0 auto;
+      display: block;
+    }
+    #title {
+      color: #00adef;
+      font-weight: 700;
+      font-size: 1.2rem;
       user-select: none;
     }
-
     #controls {
-      padding: 10px 15px;
-      background: #f0f3f7;
+      padding: 10px;
+      background: #1b263b;
       display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
+      gap: 1rem;
       align-items: center;
-      font-size: 14px;
+      flex-wrap: wrap;
+      color: #eee;
     }
-    #controls label {
+    label {
       font-weight: 600;
-      color: #333;
+      color: #a9cfe7;
     }
-    #controls select {
-      padding: 5px 8px;
+    select {
+      background-color: #0d1b2a;
+      color: #eee;
+      border: 1px solid #336699;
       border-radius: 4px;
-      border: 1px solid #ccc;
-      font-size: 14px;
+      padding: 4px 8px;
+      font-size: 1rem;
     }
-
+    select:focus {
+      outline: none;
+      border-color: #00adef;
+      box-shadow: 0 0 5px #00adef;
+    }
     #map {
-      height: calc(100vh - 110px);
+      height: calc(100vh - 120px);
       width: 100%;
+      background: #121212;
     }
-
-    /* Emoji marker styling */
     .emoji-div-icon {
-      font-size: 24px;
-      line-height: 24px;
-      user-select: none;
+      font-size: 28px;
+      line-height: 28px;
       text-align: center;
+      user-select: none;
+      text-shadow: 0 0 2px black;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Afsprakenkaart</h1>
-    <img
-      src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"
-      alt="VoltSmart logo"
-      class="logo"
-      draggable="false"
-    />
-  </header>
+  <div id="topbar">
+    <div id="title">Afsprakenkaart</div>
+    <img id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart logo" />
+    <div style="width:100px;"></div> <!-- Dummy for spacing so logo is centered -->
+  </div>
 
   <div id="controls">
     <label for="datumSelect">📅 Datum:</label>
@@ -108,7 +105,6 @@
     const sheetURL =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
 
-    // Emoji per operator
     const operatorEmoji = {
       Roelof: "🔴",
       Jesse: "🔵",
@@ -116,7 +112,7 @@
       Karlijn: "🌸",
       Civan: "🟢",
       Keith: "🟡",
-      Gio: "🟠",
+      Gio: "🟠"
     };
 
     let map;
@@ -126,12 +122,11 @@
     async function initMap() {
       map = L.map("map").setView([52.1, 5.1], 7);
 
-      // Simpele OpenStreetMap tiles
- L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 18,
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 19,
       }).addTo(map);
-
 
       await loadAfspraken();
       buildFilters();
@@ -146,28 +141,32 @@
       afsprakenData = [];
 
       for (const row of rows) {
-        // Let op: scheiding is comma, maar adres kan komma's bevatten. Daarom beter splitten met CSV parser, maar hier quickfix:
-        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        // Gebruik split met regex om ook komma's in adres goed te pakken
+        // csv kolommen: datum, medewerker, adres, status, tijd
+        const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        if (!cols || cols.length < 5) continue;
 
-        if (cols.length < 7) continue;
+        let [datum, medewerker, adres, status, tijd] = cols;
 
-        const datum = cols[0].trim();
-        const medewerker = cols[1].trim();
-        const adres = cols[2].trim() + (cols[3] ? ", " + cols[3].trim() : "") + (cols[4] ? ", " + cols[4].trim() : "") + (cols[5] ? ", " + cols[5].trim() : "") + (cols[6] ? ", " + cols[6].trim() : "");
-        const status = ""; // optioneel als je sheet kolommen anders zijn, pas aan
-        const tijd = ""; // optioneel als je sheet kolommen anders zijn, pas aan
-        // In jouw sheet staan al lat/lon, pak die mee:
-        const lat = parseFloat(cols[7]);
-        const lon = parseFloat(cols[8]);
+        // Adres corrigeren: verwijder quotes en vervang eventueel puntkomma/komma problemen
+        adres = adres.replace(/^"|"$/g, "").replace(/;/g, ",");
 
-        if (!datum || !medewerker || !adres || isNaN(lat) || isNaN(lon)) continue;
+        if (!adres || !datum || !medewerker || !tijd) continue;
 
-        // Operators kunnen meedere zijn met komma
+        // Google Sheet bevat nu ook lat lon in kolom 6 en 7 (index 5,6)
+        // We gaan deze per rij ophalen door split (indien beschikbaar)
+        // We verwachten lat en lon achteraan in csv
+
+        // Omdat sheet public CSV, misschien meer kolommen aanwezig, we proberen lat lon uit kolom 6 en 7
+        let lat = parseFloat(cols[5]);
+        let lon = parseFloat(cols[6]);
+        if (!lat || !lon) continue; // sla over als geen goede coords
+
         const operators = medewerker.split(",").map((o) => o.trim());
 
         afsprakenData.push({
           datum,
-          tijd: cols[6].trim(),
+          tijd,
           operators,
           adres,
           status,
@@ -178,11 +177,15 @@
     }
 
     function maakEmojiMarker(emoji, nummer) {
+      const label = nummer
+        ? `<span style="font-weight:bold;color:#fff;text-shadow:0 0 3px #000">${nummer}</span> ${emoji}`
+        : emoji;
+
       return L.divIcon({
         className: "emoji-div-icon",
-        html: nummer ? `${nummer} ${emoji}` : emoji,
+        html: label,
         iconSize: [30, 30],
-        iconAnchor: [15, 30],
+        iconAnchor: [15, 15],
       });
     }
 
@@ -190,7 +193,6 @@
       const datumSelect = document.getElementById("datumSelect");
       const operatorSelect = document.getElementById("operatorSelect");
 
-      // Unieke datums
       const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort();
       uniekeDatums.forEach((d) => {
         const opt = document.createElement("option");
@@ -199,7 +201,6 @@
         datumSelect.appendChild(opt);
       });
 
-      // Alle operators, inclusief meedere
       const allOps = afsprakenData.flatMap((a) => a.operators);
       const uniekeOperators = [...new Set(allOps)].sort();
       uniekeOperators.forEach((o) => {
@@ -217,52 +218,44 @@
       const datum = document.getElementById("datumSelect").value.trim();
       const operator = document.getElementById("operatorSelect").value.trim();
 
-      // Verwijder oude markers
       allMarkers.forEach((marker) => map.removeLayer(marker));
       allMarkers = [];
 
-      // Filter data
+      // Groepeer afspraken per operator + datum om te checken of nummering nodig is
+      const afsprakenPerOperatorDatum = {};
+
       const gefilterd = afsprakenData.filter((a) => {
         const datumMatch = !datum || a.datum === datum;
         const operatorMatch = !operator || a.operators.includes(operator);
         return datumMatch && operatorMatch;
       });
 
-      // Sorteer per operator op tijd en geef nummer
-      // Groepeer eerst per operator
-      const grouped = {};
+      // Verzamel per operator + datum
       gefilterd.forEach((a) => {
         a.operators.forEach((op) => {
-          if (!grouped[op]) grouped[op] = [];
-          grouped[op].push(a);
+          const key = `${op}__${a.datum}`;
+          if (!afsprakenPerOperatorDatum[key]) afsprakenPerOperatorDatum[key] = [];
+          afsprakenPerOperatorDatum[key].push(a);
         });
       });
 
-      // Sorteer per operator op tijd
-      for (const op in grouped) {
-        grouped[op].sort((x, y) => x.tijd.localeCompare(y.tijd));
+      // Sorteer en ken volgnummer toe indien nodig
+      for (const key in afsprakenPerOperatorDatum) {
+        afsprakenPerOperatorDatum[key].sort((x, y) => x.tijd.localeCompare(y.tijd));
+
+        if (afsprakenPerOperatorDatum[key].length > 1) {
+          afsprakenPerOperatorDatum[key].forEach((a, i) => {
+            a.volgnummer = i + 1;
+          });
+        } else {
+          afsprakenPerOperatorDatum[key][0].volgnummer = null;
+        }
       }
 
-      // Map om nummers te geven per afspraak per operator
-      const nummerMap = new Map();
-
-      // Vul nummers
-      for (const op in grouped) {
-        grouped[op].forEach((afspraak, idx) => {
-          const key = `${afspraak.datum}-${afspraak.tijd}-${afspraak.adres}`;
-          if (!nummerMap.has(key)) nummerMap.set(key, {});
-          nummerMap.get(key)[op] = idx + 1;
-        });
-      }
-
-      // Plaats markers
       gefilterd.forEach((a) => {
         const hoofdOperator = a.operators[0];
         const emoji = operatorEmoji[hoofdOperator] || "⚪";
-
-        // Nummer ophalen voor hoofd operator
-        const key = `${a.datum}-${a.tijd}-${a.adres}`;
-        const nummer = nummerMap.get(key) ? nummerMap.get(key)[hoofdOperator] : null;
+        const nummer = a.volgnummer;
 
         const marker = L.marker([a.lat, a.lon], {
           icon: maakEmojiMarker(emoji, nummer),
@@ -272,7 +265,7 @@
           <strong>${a.operators.join(", ")}</strong><br>
           ${a.adres}<br>
           ${a.datum} ${a.tijd}<br>
-          Status: ${a.status || "Onbekend"}
+          Status: ${a.status}
         `);
 
         allMarkers.push(marker);
