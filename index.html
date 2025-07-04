@@ -17,64 +17,71 @@
       font-family: sans-serif;
       margin: 0;
       padding: 0;
-      background-color: #121212;
+      background: #121212;
       color: #eee;
     }
+    #topbar {
+      display: flex;
+      align-items: center;
+      background-color: #282828;
+      padding: 10px 20px;
+      justify-content: space-between;
+      color: white;
+    }
+    #title {
+      font-weight: 700;
+      font-size: 1.5rem;
+      letter-spacing: 1px;
+      user-select: none;
+    }
+    #logo {
+      height: 40px;
+      user-select: none;
+    }
     #controls {
-      padding: 10px;
-      background: #1f1f1f;
+      padding: 10px 20px;
+      background: #1e1e1e;
       display: flex;
       gap: 1rem;
       align-items: center;
       flex-wrap: wrap;
-      border-bottom: 1px solid #333;
+      color: white;
+    }
+    select {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    label {
+      user-select: none;
     }
     #map {
-      height: 90vh;
+      height: 85vh;
       width: 100%;
     }
+    /* Style voor emoji marker */
     .emoji-div-icon {
       font-size: 24px;
       line-height: 24px;
       text-align: center;
       user-select: none;
     }
-    header {
-      background-color: #000;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #333;
-    }
-    header img {
-      height: 40px;
-      margin-left: 1rem;
-      margin-right: 1rem;
-    }
-    header h1 {
-      font-weight: 700;
-      font-size: 1.5rem;
-      margin: 0;
-      flex-grow: 1;
-      text-align: left;
-      color: #e6b600; /* voltsmart gold color */
-    }
-    select {
-      background-color: #2a2a2a;
-      border: 1px solid #555;
-      color: #eee;
-      padding: 5px 10px;
-      border-radius: 4px;
-    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Afsprakenkaart</h1>
-    <img src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart logo" />
-  </header>
+  <div id="topbar">
+    <div id="title">Afsprakenkaart</div>
+    <img
+      id="logo"
+      src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"
+      alt="Voltsmart Logo"
+      draggable="false"
+    />
+    <div style="width: 100px;"></div> <!-- Dummy for spacing -->
+  </div>
 
   <div id="controls">
     <label for="datumSelect">📅 Datum: </label>
@@ -111,10 +118,14 @@
     async function initMap() {
       map = L.map("map").setView([52.1, 5.1], 7);
 
-      L.tileLayer("https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 18,
-      }).addTo(map);
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          maxZoom: 18,
+        }
+      ).addTo(map);
 
       await loadAfspraken();
       buildFilters();
@@ -133,16 +144,11 @@
 
         if (!adres || !datum || !medewerker || !tijd) continue;
 
-        // In geval van meerdere operators gescheiden door komma
-        const operators = medewerker.split(",").map((o) => o.trim());
-
-        // Lat/lon direct uit sheet ingevuld (aangenomen in kolommen 6 & 7)
-        // Let op: aangepaste sheet moet lat in kolom 6 (index 5), lon in kolom 7 (index 6)
-        // Als je lat/lon nog uit het adres wilt halen, kan je dit aanpassen
-
-        // Omdat je alleen 5 kolommen benoemde, lat/lon moeten dus toegevoegd zijn of geparsed worden hier.
-        // Voor nu even lat/lon uit adres geocodet:
-        const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}`;
+        // Adres netjes met komma's gescheiden, kan aanpassen hier als nodig
+        // Hier gebruiken we adres zoals in sheet (je kan dit uitbreiden)
+        const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          adres
+        )}`;
         try {
           const geoRes = await fetch(geoURL, {
             headers: { "User-Agent": "afspraken-tool-demo" },
@@ -151,6 +157,7 @@
 
           if (geoData.length > 0) {
             const { lat, lon } = geoData[0];
+            const operators = medewerker.split(",").map((o) => o.trim());
             afsprakenData.push({
               datum,
               tijd,
@@ -208,38 +215,43 @@
       allMarkers.forEach((marker) => map.removeLayer(marker));
       allMarkers = [];
 
-      // Groeperen op operator + datum voor nummering
-      const filtered = afsprakenData.filter((a) => {
+      const gefilterd = afsprakenData.filter((a) => {
         const datumMatch = !datum || a.datum.trim() === datum;
         const operatorMatch = !operator || a.operators.includes(operator);
         return datumMatch && operatorMatch;
       });
 
-      // Groeperen op operator + datum om te checken hoeveel afspraken per dag per operator
-      const groep = {};
-      filtered.forEach((a) => {
+      // Voor nummering per operator per datum, indien meerdere afspraken
+      const afsprakenPerOperatorDatum = {};
+      gefilterd.forEach((a) => {
         a.operators.forEach((op) => {
-          const key = `${op}_${a.datum}`;
-          if (!groep[key]) groep[key] = [];
-          groep[key].push(a);
+          const key = `${a.datum}_${op}`;
+          if (!afsprakenPerOperatorDatum[key]) afsprakenPerOperatorDatum[key] = [];
+          afsprakenPerOperatorDatum[key].push(a);
         });
       });
+      // Sorteer per tijd
+      Object.values(afsprakenPerOperatorDatum).forEach((lijst) =>
+        lijst.sort((a, b) => {
+          const tA = a.tijd.split(":").map(Number);
+          const tB = b.tijd.split(":").map(Number);
+          return tA[0] * 60 + tA[1] - (tB[0] * 60 + tB[1]);
+        })
+      );
 
-      // Nummering toevoegen als operator meerdere afspraken op dezelfde dag heeft
-      filtered.forEach((a) => {
+      gefilterd.forEach((a) => {
         const hoofdOperator = a.operators[0];
         const emoji = operatorEmoji[hoofdOperator] || "⚪";
 
         let nummering = "";
-        const key = `${hoofdOperator}_${a.datum}`;
-        if (groep[key] && groep[key].length > 1) {
-          // Sorteer op tijd
-          groep[key].sort((x, y) => (x.tijd > y.tijd ? 1 : -1));
-          const index = groep[key].indexOf(a) + 1;
-          nummering = index + ". ";
+        const key = `${a.datum}_${hoofdOperator}`;
+        if (
+          afsprakenPerOperatorDatum[key] &&
+          afsprakenPerOperatorDatum[key].length > 1
+        ) {
+          nummering =
+            afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
         }
-
-        const cleanAdres = a.adres.replace(/\s*\b[0-9]{4}\s*[A-Za-z]{2}\b\s*$/, "");
 
         const marker = L.marker([a.lat, a.lon], {
           icon: maakEmojiMarker(emoji),
@@ -247,7 +259,7 @@
 
         marker.bindPopup(`
           <strong>${nummering}${a.operators.join(", ")}</strong><br>
-          ${cleanAdres}<br>
+          ${a.adres}<br>
           ${a.datum} ${a.tijd}<br>
           ${a.status ? `Status: ${a.status}` : ""}
         `);
