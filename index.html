@@ -257,12 +257,13 @@
           icon: maakEmojiMarker(emoji),
         }).addTo(map);
 
-        marker.bindPopup(`
-          <strong>${nummering}${a.operators.join(", ")}</strong><br>
-          ${a.adres}<br>
-          ${a.datum} ${a.tijd}<br>
-          ${a.status ? `Status: ${a.status}` : ""}
-        `);
+       marker.bindPopup(`
+  <strong>${nummering}${a.operators.join(", ")}</strong><br>
+  ${a.adres.replace(/\s*\b[0-9]{4}\s*[A-Za-z]{2}\b\s*$/, "")}<br>
+  ${a.datum} ${a.tijd}<br>
+  ${a.status ? `Status: ${a.status}` : ""}
+`);
+
 
         allMarkers.push(marker);
       });
