@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Afsprakenkaart (met filters)</title>
+  <title>Afsprakenkaart met operatorkleuren</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Leaflet -->
+
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet Awesome Markers -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.min.js"></script>
 
   <style>
     body { font-family: sans-serif; margin: 0; padding: 0; }
@@ -33,9 +37,23 @@
 
 <script>
   const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv';
+
   let map;
   let allMarkers = [];
   let afsprakenData = [];
+
+  const operatorKleuren = {
+    'Roelof': 'red',
+    'Jesse': 'blue',
+    'Chanice': 'purple',
+    'Karlijn': 'pink',
+    'Civan': 'green',
+    'Keith': 'yellow'
+  };
+
+  function getKleurVoorOperator(naam) {
+    return operatorKleuren[naam] || 'gray';
+  }
 
   async function initMap() {
     map = L.map('map').setView([52.1, 5.1], 7);
@@ -78,7 +96,6 @@
     const datumSelect = document.getElementById('datumSelect');
     const operatorSelect = document.getElementById('operatorSelect');
 
-    // Datum filter opties
     const uniekeDatums = [...new Set(afsprakenData.map(a => a.datum))].sort();
     uniekeDatums.forEach(d => {
       const opt = document.createElement('option');
@@ -87,7 +104,6 @@
       datumSelect.appendChild(opt);
     });
 
-    // Operator filter opties
     const allOps = afsprakenData.flatMap(a => a.operators);
     const uniekeOperators = [...new Set(allOps)].sort();
     uniekeOperators.forEach(o => {
@@ -115,13 +131,23 @@
     });
 
     gefilterd.forEach(a => {
-      const marker = L.marker([a.lat, a.lon]).addTo(map);
+      const hoofdOperator = a.operators[0];
+      const kleur = getKleurVoorOperator(hoofdOperator);
+
+      const markerIcon = L.AwesomeMarkers.icon({
+        icon: 'user',
+        markerColor: kleur,
+        prefix: 'fa'
+      });
+
+      const marker = L.marker([a.lat, a.lon], { icon: markerIcon }).addTo(map);
       marker.bindPopup(`
         <strong>${a.operators.join(', ')}</strong><br>
         ${a.adres}<br>
         ${a.datum} ${a.tijd}<br>
         Status: ${a.status}
       `);
+
       allMarkers.push(marker);
     });
   }
