@@ -64,7 +64,6 @@
       height: 85vh;
       width: 100%;
     }
-    /* Style voor emoji marker */
     .emoji-div-icon {
       font-size: 24px;
       line-height: 24px;
@@ -82,7 +81,7 @@
       alt="Voltsmart Logo"
       draggable="false"
     />
-    <div style="width: 100px;"></div> <!-- Dummy for spacing -->
+    <div style="width: 100px;"></div>
   </div>
 
   <div id="controls">
@@ -222,7 +221,6 @@
         return datumMatch && operatorMatch;
       });
 
-      // Voor nummering per operator per datum, indien meerdere afspraken
       const afsprakenPerOperatorDatum = {};
       gefilterd.forEach((a) => {
         a.operators.forEach((op) => {
@@ -231,7 +229,7 @@
           afsprakenPerOperatorDatum[key].push(a);
         });
       });
-      // Sorteer per tijd
+
       Object.values(afsprakenPerOperatorDatum).forEach((lijst) =>
         lijst.sort((a, b) => {
           const tA = a.tijd.split(":").map(Number);
@@ -254,24 +252,34 @@
             afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
         }
 
-        // Adres zonder postcode (als postcode de laatste 'woord' is)
         const adresZonderPostcode = a.adres
           .split(" ")
           .filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w))
           .join(" ");
 
-        marker = L.marker([a.lat, a.lon], {
+        const adresEncoded = encodeURIComponent(a.adres);
+
+        const marker = L.marker([a.lat, a.lon], {
           icon: maakEmojiMarker(emoji),
         }).addTo(map);
 
         marker.bindPopup(`
           <strong>${nummering}${a.operators.join(", ")}</strong><br>
-          ${adresZonderPostcode}<br>
+          <span style="cursor:pointer; text-decoration:underline;" onclick="copyAdres('${a.adres.replace(/'/g, "\\'")}')">${adresZonderPostcode}</span><br>
+          <a href="https://www.google.com/maps/search/?api=1&query=${adresEncoded}" target="_blank" style="color:#00ccff;">📍 Open in Google Maps</a><br>
           ${a.datum} ${a.tijd}<br>
           ${a.status ? `Status: ${a.status}` : ""}
         `);
 
         allMarkers.push(marker);
+      });
+    }
+
+    function copyAdres(adres) {
+      navigator.clipboard.writeText(adres).then(() => {
+        alert("📋 Adres gekopieerd: " + adres);
+      }).catch(err => {
+        alert("Kopiëren mislukt: " + err);
       });
     }
 
