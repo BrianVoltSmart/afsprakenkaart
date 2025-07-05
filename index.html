@@ -61,15 +61,35 @@
       user-select: none;
     }
     #map {
-      height: 85vh;
+      height: 75vh;
       width: 100%;
     }
-    /* Style voor emoji marker */
+    /* Emoji marker */
     .emoji-div-icon {
       font-size: 24px;
       line-height: 24px;
       text-align: center;
       user-select: none;
+    }
+
+    /* Legenda */
+    #legend {
+      padding: 10px 20px;
+      background: #1e1e1e;
+      color: white;
+      font-size: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .legend-icon {
+      font-size: 1.2rem;
     }
   </style>
 </head>
@@ -82,7 +102,7 @@
       alt="Voltsmart Logo"
       draggable="false"
     />
-    <div style="width: 100px;"></div> <!-- Dummy for spacing -->
+    <div style="width: 100px;"></div>
   </div>
 
   <div id="controls">
@@ -98,6 +118,7 @@
   </div>
 
   <div id="map"></div>
+  <div id="legend"></div>
 
   <script>
     const sheetURL =
@@ -131,6 +152,7 @@
 
       await loadAfspraken();
       buildFilters();
+      buildLegend();
       updateMarkers();
     }
 
@@ -209,6 +231,17 @@
       operatorSelect.addEventListener("change", updateMarkers);
     }
 
+    function buildLegend() {
+      const legend = document.getElementById("legend");
+      legend.innerHTML = "<strong>Legenda:</strong>";
+      for (const [naam, emoji] of Object.entries(operatorEmoji)) {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
+        legend.appendChild(item);
+      }
+    }
+
     function updateMarkers() {
       const datum = document.getElementById("datumSelect").value.trim();
       const operator = document.getElementById("operatorSelect").value.trim();
@@ -222,7 +255,6 @@
         return datumMatch && operatorMatch;
       });
 
-      // Voor nummering per operator per datum, indien meerdere afspraken
       const afsprakenPerOperatorDatum = {};
       gefilterd.forEach((a) => {
         a.operators.forEach((op) => {
@@ -231,7 +263,7 @@
           afsprakenPerOperatorDatum[key].push(a);
         });
       });
-      // Sorteer per tijd
+
       Object.values(afsprakenPerOperatorDatum).forEach((lijst) =>
         lijst.sort((a, b) => {
           const tA = a.tijd.split(":").map(Number);
@@ -254,11 +286,14 @@
             afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
         }
 
-        // Adres zonder postcode (als postcode de laatste 'woord' is)
         const adresZonderPostcode = a.adres
           .split(" ")
           .filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w))
           .join(" ");
+
+        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          a.lat + "," + a.lon
+        )}`;
 
         marker = L.marker([a.lat, a.lon], {
           icon: maakEmojiMarker(emoji),
@@ -268,7 +303,8 @@
           <strong>${nummering}${a.operators.join(", ")}</strong><br>
           ${adresZonderPostcode}<br>
           ${a.datum} ${a.tijd}<br>
-          ${a.status ? `Status: ${a.status}` : ""}
+          ${a.status ? `Status: ${a.status}<br>` : ""}
+          <a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>
         `);
 
         allMarkers.push(marker);
