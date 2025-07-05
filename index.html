@@ -6,10 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
@@ -238,7 +235,7 @@
         })
       );
 
-      gefilterd.forEach((a, idx) => {
+      gefilterd.forEach((a) => {
         const hoofdOperator = a.operators[0];
         const emoji = operatorEmoji[hoofdOperator] || "⚪";
         const key = `${a.datum}_${hoofdOperator}`;
@@ -249,7 +246,6 @@
         const adresZonderPostcode = a.adres.split(" ").filter(w => !/^\\d{4}\\s?[A-Z]{2}$/i.test(w)).join(" ");
         const googleMapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a.adres);
 
-        // Offset om markers op dezelfde plek te spreiden
         const offset = (afsprakenPerOperatorDatum[key]?.indexOf(a) || 0) * 0.0003;
         const marker = L.marker([a.lat + offset, a.lon + offset], {
           icon: maakEmojiMarker(emoji),
