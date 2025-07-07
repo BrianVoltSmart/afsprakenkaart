@@ -295,7 +295,7 @@
           a.lat + "," + a.lon
         )}`;
 
-        marker = L.marker([a.lat, a.lon], {
+        const marker = L.marker([a.lat, a.lon], {
           icon: maakEmojiMarker(emoji),
         }).addTo(map);
 
