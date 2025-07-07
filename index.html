@@ -4,6 +4,7 @@
   <title>Afsprakenkaart met emoji-markers</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -85,8 +86,9 @@
       font-size: 1.2rem;
     }
     #output {
-      padding: 10px 20px;
       background: #1e1e1e;
+      padding: 10px 20px;
+      color: white;
       font-size: 0.9rem;
     }
   </style>
@@ -94,27 +96,37 @@
 <body>
   <div id="topbar">
     <div id="title">Afsprakenkaart</div>
-    <img id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart Logo" draggable="false" />
-    <input type="text" id="searchInput" placeholder="🔍 Zoek adres" />
+    <img
+      id="logo"
+      src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"
+      alt="Voltsmart Logo"
+      draggable="false"
+    />
+    <div style="width: 100px;"></div>
   </div>
 
   <div id="controls">
-    <label for="datumSelect">📅 Datum:</label>
+    <label for="datumSelect">📅 Datum: </label>
     <select id="datumSelect">
       <option value="">-- Alles --</option>
     </select>
-    <label for="operatorSelect">👤 Operator:</label>
+
+    <label for="operatorSelect">👤 Operator: </label>
     <select id="operatorSelect">
       <option value="">-- Iedereen --</option>
     </select>
+
+    <label for="zoekInput">🔍 Zoek adres: </label>
+    <input type="text" id="zoekInput" placeholder="Typ een adres..." />
   </div>
 
   <div id="map"></div>
-  <div id="output"></div>
   <div id="legend"></div>
+  <div id="output"></div>
 
   <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
+    const sheetURL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
 
     const operatorEmoji = {
       Roelof: "👨‍🌾",
@@ -132,10 +144,16 @@
 
     async function initMap() {
       map = L.map("map").setView([52.1, 5.1], 7);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 18,
-      }).addTo(map);
+
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          maxZoom: 18,
+        }
+      ).addTo(map);
+
       await loadAfspraken();
       buildFilters();
       buildLegend();
@@ -146,7 +164,9 @@
       const res = await fetch(sheetURL);
       const csvText = await res.text();
       const rows = csvText.split("\n").slice(1);
+
       afsprakenData = [];
+
       for (const row of rows) {
         const cols = row.split(",");
         const datum = cols[0]?.trim();
@@ -156,23 +176,42 @@
         const tijd = cols[4]?.trim();
         const lat = parseFloat(cols[7]);
         const lon = parseFloat(cols[8]);
+
         if (!adres || !datum || !medewerker || !tijd || isNaN(lat) || isNaN(lon)) continue;
+
         const operators = medewerker.split(",").map((o) => o.trim());
-        afsprakenData.push({ datum, tijd, operators, adres, status, lat, lon });
+
+        afsprakenData.push({
+          datum,
+          tijd,
+          operators,
+          adres,
+          status,
+          lat,
+          lon,
+        });
       }
     }
 
-    function parseDatum(d) {
-      const [dag, maand, jaar] = d.split("-").map(Number);
-      return new Date(jaar, maand - 1, dag);
+    function maakEmojiMarker(emoji) {
+      return L.divIcon({
+        className: "emoji-div-icon",
+        html: emoji,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
     }
 
     function buildFilters() {
       const datumSelect = document.getElementById("datumSelect");
       const operatorSelect = document.getElementById("operatorSelect");
+      const zoekInput = document.getElementById("zoekInput");
 
-      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))]
-        .sort((a, b) => parseDatum(a) - parseDatum(b));
+      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort((a, b) => {
+        const [d1, m1, y1] = a.split("-").map(Number);
+        const [d2, m2, y2] = b.split("-").map(Number);
+        return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
+      });
       uniekeDatums.forEach((d) => {
         const opt = document.createElement("option");
         opt.value = d;
@@ -191,6 +230,7 @@
 
       datumSelect.addEventListener("change", updateMarkers);
       operatorSelect.addEventListener("change", updateMarkers);
+      zoekInput.addEventListener("input", updateMarkers);
     }
 
     function buildLegend() {
@@ -204,9 +244,24 @@
       }
     }
 
+    function getAfstand(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
     function updateMarkers() {
       const datum = document.getElementById("datumSelect").value.trim();
       const operator = document.getElementById("operatorSelect").value.trim();
+      const zoekTerm = document.getElementById("zoekInput").value.trim().toLowerCase();
       const output = document.getElementById("output");
       output.innerHTML = "";
 
@@ -216,7 +271,8 @@
       const gefilterd = afsprakenData.filter((a) => {
         const datumMatch = !datum || a.datum === datum;
         const operatorMatch = !operator || a.operators.includes(operator);
-        return datumMatch && operatorMatch;
+        const zoekMatch = !zoekTerm || a.adres.toLowerCase().includes(zoekTerm);
+        return datumMatch && operatorMatch && zoekMatch;
       });
 
       const afsprakenPerOperatorDatum = {};
@@ -260,39 +316,34 @@
       gefilterd.forEach((a) => {
         const hoofdOperator = a.operators[0];
         const emoji = operatorEmoji[hoofdOperator] || "⚪";
-        const marker = L.marker([a.lat, a.lon], {
-          icon: L.divIcon({
-            className: "emoji-div-icon",
-            html: emoji,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-          }),
-        }).addTo(map);
-        const adresZonderPostcode = a.adres.split(" ").filter(w => !/^\d{4}\s?[A-Z]{2}$/i.test(w)).join(" ");
+
+        const key = `${a.datum}_${hoofdOperator}`;
+        let nummering = "";
+        if (afsprakenPerOperatorDatum[key]?.length > 1) {
+          nummering = afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
+        }
+
+        const adresZonderPostcode = a.adres
+          .split(" ")
+          .filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w))
+          .join(" ");
         const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.lat + "," + a.lon)}`;
-        marker.bindPopup(`<strong>${a.operators.join(", ")}</strong><br>${adresZonderPostcode}<br>${a.datum} ${a.tijd}<br>${a.status ? `Status: ${a.status}<br>` : ""}<a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>`);
+
+        const marker = L.marker([a.lat, a.lon], {
+          icon: maakEmojiMarker(emoji),
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <strong>${nummering}${a.operators.join(", ")}</strong><br>
+          ${adresZonderPostcode}<br>
+          ${a.datum} ${a.tijd}<br>
+          ${a.status ? `Status: ${a.status}<br>` : ""}
+          <a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>
+        `);
+
         allMarkers.push(marker);
       });
     }
-
-    function getAfstand(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
-
-    function toRad(deg) {
-      return deg * Math.PI / 180;
-    }
-
-    document.getElementById("searchInput").addEventListener("input", function () {
-      const val = this.value.toLowerCase();
-      const match = afsprakenData.find(a => a.adres.toLowerCase().includes(val));
-      if (match) map.setView([match.lat, match.lon], 13);
-    });
 
     initMap();
   </script>
