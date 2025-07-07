@@ -40,6 +40,18 @@
       margin: 0 auto;
       display: block;
     }
+    #searchContainer {
+      display: flex;
+      align-items: center;
+    }
+    #searchInput {
+      padding: 6px 10px;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: none;
+      background: #333;
+      color: white;
+    }
     #controls {
       padding: 10px 20px;
       background: #1e1e1e;
@@ -88,6 +100,11 @@
     .legend-icon {
       font-size: 1.2rem;
     }
+    #afstandInfo {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background: #1e1e1e;
+    }
   </style>
 </head>
 <body>
@@ -99,7 +116,9 @@
       alt="Voltsmart Logo"
       draggable="false"
     />
-    <div style="width: 100px;"></div>
+    <div id="searchContainer">
+      <input type="text" id="searchInput" placeholder="🔍 Zoek adres..." />
+    </div>
   </div>
 
   <div id="controls">
@@ -116,13 +135,14 @@
 
   <div id="map"></div>
   <div id="legend"></div>
+  <div id="afstandInfo"></div>
 
   <script>
     const sheetURL =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
 
     const operatorEmoji = {
-      Roelof: "👨‍🌾",
+      Roelof: "👴‍🌾",
       Jesse: "🚀",
       Chanice: "✨",
       Karlijn: "🌸",
@@ -134,6 +154,7 @@
     let map;
     let allMarkers = [];
     let afsprakenData = [];
+    let geselecteerdeMarkers = [];
 
     async function initMap() {
       map = L.map("map").setView([52.1, 5.1], 7);
@@ -151,13 +172,14 @@
       buildFilters();
       buildLegend();
       updateMarkers();
+
+      document.getElementById("searchInput").addEventListener("input", zoekAdres);
     }
 
     async function loadAfspraken() {
       const res = await fetch(sheetURL);
       const csvText = await res.text();
       const rows = csvText.split("\n").slice(1);
-
       afsprakenData = [];
 
       for (const row of rows) {
@@ -169,51 +191,27 @@
         const tijd = cols[4]?.trim();
         const lat = parseFloat(cols[7]);
         const lon = parseFloat(cols[8]);
-
-        if (
-          !adres ||
-          !datum ||
-          !medewerker ||
-          !tijd ||
-          isNaN(lat) ||
-          isNaN(lon)
-        )
-          continue;
-
+        if (!adres || !datum || !medewerker || !tijd || isNaN(lat) || isNaN(lon)) continue;
         const operators = medewerker.split(",").map((o) => o.trim());
-
-        afsprakenData.push({
-          datum,
-          tijd,
-          operators,
-          adres,
-          status,
-          lat,
-          lon,
-        });
+        afsprakenData.push({ datum, tijd, operators, adres, status, lat, lon });
       }
     }
 
     function parseDatum(d) {
-      const parts = d.split("-").map(Number);
-      return new Date(parts[2], parts[1] - 1, parts[0]);
+      const parts = d.split("-");
+      return new Date(+parts[2], parts[1] - 1, +parts[0]);
     }
 
     function buildFilters() {
       const datumSelect = document.getElementById("datumSelect");
       const operatorSelect = document.getElementById("operatorSelect");
-
-      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort((a, b) => {
-        return parseDatum(a) - parseDatum(b);
-      });
-
+      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort((a, b) => parseDatum(a) - parseDatum(b));
       uniekeDatums.forEach((d) => {
         const opt = document.createElement("option");
         opt.value = d;
         opt.textContent = d;
         datumSelect.appendChild(opt);
       });
-
       const allOps = afsprakenData.flatMap((a) => a.operators);
       const uniekeOperators = [...new Set(allOps)].sort();
       uniekeOperators.forEach((o) => {
@@ -222,7 +220,6 @@
         opt.textContent = o;
         operatorSelect.appendChild(opt);
       });
-
       datumSelect.addEventListener("change", updateMarkers);
       operatorSelect.addEventListener("change", updateMarkers);
     }
@@ -241,9 +238,10 @@
     function updateMarkers() {
       const datum = document.getElementById("datumSelect").value.trim();
       const operator = document.getElementById("operatorSelect").value.trim();
-
       allMarkers.forEach((marker) => map.removeLayer(marker));
       allMarkers = [];
+      geselecteerdeMarkers = [];
+      document.getElementById("afstandInfo").textContent = "";
 
       const gefilterd = afsprakenData.filter((a) => {
         const datumMatch = !datum || a.datum === datum;
@@ -260,37 +258,18 @@
         });
       });
 
-      Object.values(afsprakenPerOperatorDatum).forEach((lijst) =>
-        lijst.sort((a, b) => {
-          const tA = a.tijd.split(":").map(Number);
-          const tB = b.tijd.split(":").map(Number);
-          return tA[0] * 60 + tA[1] - (tB[0] * 60 + tB[1]);
-        })
-      );
+      Object.values(afsprakenPerOperatorDatum).forEach((lijst) => lijst.sort((a, b) => a.tijd.localeCompare(b.tijd)));
 
       gefilterd.forEach((a) => {
         const hoofdOperator = a.operators[0];
         const emoji = operatorEmoji[hoofdOperator] || "⚪";
-
         let nummering = "";
         const key = `${a.datum}_${hoofdOperator}`;
-        if (
-          afsprakenPerOperatorDatum[key] &&
-          afsprakenPerOperatorDatum[key].length > 1
-        ) {
-          nummering =
-            afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
+        if (afsprakenPerOperatorDatum[key]?.length > 1) {
+          nummering = afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
         }
-
-        const adresZonderPostcode = a.adres
-          .split(" ")
-          .filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w))
-          .join(" ");
-
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          a.lat + "," + a.lon
-        )}`;
-
+        const adresZonderPostcode = a.adres.split(" ").filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w)).join(" ");
+        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.lat + "," + a.lon)}`;
         const marker = L.marker([a.lat, a.lon], {
           icon: maakEmojiMarker(emoji),
         }).addTo(map);
@@ -303,7 +282,29 @@
           <a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>
         `);
 
+        marker.on("click", () => {
+          geselecteerdeMarkers.push(marker);
+          if (geselecteerdeMarkers.length === 2) {
+            const [m1, m2] = geselecteerdeMarkers.map((m) => m.getLatLng());
+            const afstand = map.distance(m1, m2) / 1000;
+            document.getElementById("afstandInfo").textContent = `Afstand tussen afspraken: ${afstand.toFixed(2)} km`;
+            geselecteerdeMarkers = [];
+          }
+        });
+
         allMarkers.push(marker);
+      });
+    }
+
+    function zoekAdres(e) {
+      const zoek = e.target.value.toLowerCase();
+      allMarkers.forEach((m) => {
+        const popup = m.getPopup();
+        if (popup && popup.getContent().toLowerCase().includes(zoek)) {
+          m.setOpacity(1);
+        } else {
+          m.setOpacity(0.3);
+        }
       });
     }
 
