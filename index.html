@@ -5,132 +5,35 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #121212;
-      color: #eee;
-    }
-    #topbar {
-      display: flex;
-      align-items: center;
-      background-color: #282828;
-      padding: 10px 20px;
-      justify-content: space-between;
-      color: white;
-    }
-    #title {
-      font-weight: 700;
-      font-size: 1.5rem;
-      letter-spacing: 1px;
-      user-select: none;
-    }
-    #logo {
-      height: 40px;
-      user-select: none;
-      margin: 0 auto;
-      display: block;
-    }
-    #searchContainer {
-      display: flex;
-      align-items: center;
-    }
-    #searchInput {
-      padding: 6px 10px;
-      font-size: 1rem;
-      border-radius: 4px;
-      border: none;
-      background: #333;
-      color: white;
-    }
-    #controls {
-      padding: 10px 20px;
-      background: #1e1e1e;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      flex-wrap: wrap;
-      color: white;
-    }
-    select {
-      background: #333;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 1rem;
-    }
-    label {
-      user-select: none;
-    }
-    #map {
-      height: 75vh;
-      width: 100%;
-    }
-    .emoji-div-icon {
-      font-size: 24px;
-      line-height: 24px;
-      text-align: center;
-      user-select: none;
-    }
-    #legend {
-      padding: 10px 20px;
-      background: #1e1e1e;
-      color: white;
-      font-size: 0.9rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: center;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .legend-icon {
-      font-size: 1.2rem;
-    }
-    #afstandInfo {
-      padding: 10px 20px;
-      font-size: 1rem;
-      background: #1e1e1e;
-    }
+    body { font-family: sans-serif; margin:0; background:#121212; color:#eee; }
+    #topbar { display:flex; align-items:center; background:#282828; padding:10px 20px; justify-content:space-between;}
+    #title{font-weight:700;font-size:1.5rem;}
+    #searchContainer{flex:1; text-align:right;}
+    #searchInput{padding:6px; border-radius:4px; border:none; background:#333; color:white;}
+    #controls{padding:10px 20px; background:#1e1e1e; display:flex;gap:1rem;align-items:center;}
+    select{background:#333;color:white;padding:6px;border:none;border-radius:4px;}
+    #map{height:70vh;}
+    .emoji-div-icon{font-size:24px;line-height:24px;text-align:center;}
+    #legend{padding:10px 20px;background:#1e1e1e;display:flex;gap:1rem;flex-wrap:wrap;}
+    .legend-item{display:flex;align-items:center;gap:0.5rem;}
+    .legend-icon{font-size:1.2rem;}
+    #afstandInfo{padding:10px 20px;background:#1e1e1e;}
   </style>
 </head>
 <body>
   <div id="topbar">
     <div id="title">Afsprakenkaart</div>
-    <img
-      id="logo"
-      src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"
-      alt="Voltsmart Logo"
-      draggable="false"
-    />
-    <div id="searchContainer">
-      <input type="text" id="searchInput" placeholder="🔍 Zoek adres..." />
-    </div>
+    <div id="searchContainer"><input type="text" id="searchInput" placeholder="🔍 Zoek adres of operator..." /></div>
   </div>
 
   <div id="controls">
-    <label for="datumSelect">📅 Datum: </label>
-    <select id="datumSelect">
-      <option value="">-- Alles --</option>
-    </select>
-
-    <label for="operatorSelect">👤 Operator: </label>
-    <select id="operatorSelect">
-      <option value="">-- Iedereen --</option>
-    </select>
+    <label>📅 Datum:</label><select id="datumSelect"><option value="">-- Alles --</option></select>
+    <label>👤 Operator:</label><select id="operatorSelect"><option value="">-- Iedereen --</option></select>
   </div>
 
   <div id="map"></div>
@@ -138,182 +41,113 @@
   <div id="afstandInfo"></div>
 
   <script>
-    const sheetURL =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
+    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
 
-    const operatorEmoji = {
-      Roelof: "👴‍🌾",
-      Jesse: "🚀",
-      Chanice: "✨",
-      Karlijn: "🌸",
-      Civan: "🟢",
-      Keith: "🟡",
-      Gio: "👑",
-    };
+    const operatorEmoji = { Roelof:"👨‍🌾", Jesse:"🚀", Chanice:"✨", Karlijn:"🌸", Civan:"🟢", Keith:"🟡", Gio:"👑" };
 
-    let map;
-    let allMarkers = [];
-    let afsprakenData = [];
-    let geselecteerdeMarkers = [];
+    let map, allMarkers = [], afsprakenData = [], selectedMarkers = [], routeLine;
 
-    async function initMap() {
-      map = L.map("map").setView([52.1, 5.1], 7);
-
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          maxZoom: 18,
-        }
-      ).addTo(map);
+    async function initMap(){
+      map = L.map("map").setView([52.1, 5.1],7);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{ maxZoom:18 }).addTo(map);
 
       await loadAfspraken();
-      buildFilters();
-      buildLegend();
-      updateMarkers();
+      buildFilters(); buildLegend(); updateMarkers();
 
-      document.getElementById("searchInput").addEventListener("input", zoekAdres);
+      document.getElementById("searchInput").addEventListener("input", zoekFunctie);
     }
 
-    async function loadAfspraken() {
-      const res = await fetch(sheetURL);
-      const csvText = await res.text();
-      const rows = csvText.split("\n").slice(1);
+    async function loadAfspraken(){
+      const res = await fetch(sheetURL), text = await res.text(), rows = text.split("\n").slice(1);
       afsprakenData = [];
-
-      for (const row of rows) {
-        const cols = row.split(",");
-        const datum = cols[0]?.trim();
-        const medewerker = cols[1]?.trim();
-        const adres = cols[2]?.trim();
-        const status = cols[3]?.trim();
-        const tijd = cols[4]?.trim();
-        const lat = parseFloat(cols[7]);
-        const lon = parseFloat(cols[8]);
-        if (!adres || !datum || !medewerker || !tijd || isNaN(lat) || isNaN(lon)) continue;
-        const operators = medewerker.split(",").map((o) => o.trim());
-        afsprakenData.push({ datum, tijd, operators, adres, status, lat, lon });
+      for(let row of rows){
+        const cols = row.split(","), datum=cols[0]?.trim(), medewerker=cols[1]?.trim(), adres=cols[2]?.trim(),
+          status=cols[3]?.trim(), tijd=cols[4]?.trim(), lat=parseFloat(cols[7]), lon=parseFloat(cols[8]);
+        if(!datum||!medewerker||!adres||!tijd||isNaN(lat)||isNaN(lon)) continue;
+        afsprakenData.push({ datum, tijd, operators:medewerker.split(",").map(o=>o.trim()), adres, status, lat, lon, datumObj:parseDatum(datum)});
       }
     }
 
-    function parseDatum(d) {
-      const parts = d.split("-");
-      return new Date(+parts[2], parts[1] - 1, +parts[0]);
+    function parseDatum(d){ const [d1,m,y]=d.split("-").map(Number); return new Date(y,m-1,d1); }
+
+    function buildFilters(){
+      const ds=document.getElementById("datumSelect"), os=document.getElementById("operatorSelect");
+      [...new Set(afsprakenData.map(a=>a.datum))].sort((a,b)=>parseDatum(a)-parseDatum(b)).forEach(d=>{
+        let o=document.createElement("option"); o.value=d; o.text=d; ds.append(o);
+      });
+      [...new Set(afsprakenData.flatMap(a=>a.operators))].sort().forEach(o=>{
+        let opt=document.createElement("option"); opt.value=o; opt.text=o; os.append(opt);
+      });
+      ds.addEventListener("change", updateMarkers);
+      os.addEventListener("change", updateMarkers);
     }
 
-    function buildFilters() {
-      const datumSelect = document.getElementById("datumSelect");
-      const operatorSelect = document.getElementById("operatorSelect");
-      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort((a, b) => parseDatum(a) - parseDatum(b));
-      uniekeDatums.forEach((d) => {
-        const opt = document.createElement("option");
-        opt.value = d;
-        opt.textContent = d;
-        datumSelect.appendChild(opt);
+    function buildLegend(){
+      const lg=document.getElementById("legend"); lg.innerHTML="<strong>Legenda:</strong>";
+      Object.entries(operatorEmoji).forEach(([n,e])=>{
+        let div=document.createElement("div"); div.className="legend-item";
+        div.innerHTML=`<span class="legend-icon">${e}</span>${n}`; lg.append(div);
       });
-      const allOps = afsprakenData.flatMap((a) => a.operators);
-      const uniekeOperators = [...new Set(allOps)].sort();
-      uniekeOperators.forEach((o) => {
-        const opt = document.createElement("option");
-        opt.value = o;
-        opt.textContent = o;
-        operatorSelect.appendChild(opt);
-      });
-      datumSelect.addEventListener("change", updateMarkers);
-      operatorSelect.addEventListener("change", updateMarkers);
     }
 
-    function buildLegend() {
-      const legend = document.getElementById("legend");
-      legend.innerHTML = "<strong>Legenda:</strong>";
-      for (const [naam, emoji] of Object.entries(operatorEmoji)) {
-        const item = document.createElement("div");
-        item.className = "legend-item";
-        item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
-        legend.appendChild(item);
+    function updateMarkers(){
+      allMarkers.forEach(m=>map.removeLayer(m)); allMarkers=[]; selectedMarkers=[]; clearRouteInfo();
+
+      const selectedDate=document.getElementById("datumSelect").value;
+      const selectedOp=document.getElementById("operatorSelect").value;
+
+      const filtered = afsprakenData.filter(a=> (!selectedDate||a.datum===selectedDate) && (!selectedOp||a.operators.includes(selectedOp)));
+      const grouped = {};
+      filtered.forEach(a=>{ a.operators.forEach(o=>{ const key=a.datum+"_"+o; grouped[key] ||= []; grouped[key].push(a); });});
+      Object.values(grouped).forEach(list=>list.sort((a,b)=>a.tijd.localeCompare(b.tijd)));
+
+      filtered.forEach(a=>{
+        const e=operatorEmoji[a.operators[0]]||"⚪";
+        const g=grouped[a.datum+"_"+a.operators[0]];
+        const idx=g.length>1?g.indexOf(a)+1+". ":"";
+        const adresBez = a.adres.split(" ").filter(w=>!/^\d{4}\s?[A-Z]{2}$/i.test(w)).join(" ");
+        const mapsLink=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.lat+","+a.lon)}`;
+        const m = L.marker([a.lat,a.lon],{ icon:L.divIcon({className:"emoji-div-icon", html:e, iconSize:[24,24],iconAnchor:[12,12]}) }).addTo(map);
+        m.bindPopup(`<strong>${idx}${a.operators.join(", ")}</strong><br>${adresBez}<br>${a.datum} ${a.tijd}<br>${a.status?`Status: ${a.status}<br>`:""}<a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>`);
+        m.on("click",()=>onMarkerClick(m,a));
+        allMarkers.push(m);
+      });
+    }
+
+    async function onMarkerClick(marker, data){
+      selectedMarkers.push({ marker, data });
+      if(selectedMarkers.length===2){
+        const [first, second] = selectedMarkers;
+        const ll1=first.marker.getLatLng(), ll2=second.marker.getLatLng();
+        drawRoute(ll1, ll2);
+      } else if(selectedMarkers.length>2){
+        selectedMarkers=[{marker,data}];
+        clearRoute();
       }
     }
 
-    function updateMarkers() {
-      const datum = document.getElementById("datumSelect").value.trim();
-      const operator = document.getElementById("operatorSelect").value.trim();
-      allMarkers.forEach((marker) => map.removeLayer(marker));
-      allMarkers = [];
-      geselecteerdeMarkers = [];
-      document.getElementById("afstandInfo").textContent = "";
-
-      const gefilterd = afsprakenData.filter((a) => {
-        const datumMatch = !datum || a.datum === datum;
-        const operatorMatch = !operator || a.operators.includes(operator);
-        return datumMatch && operatorMatch;
-      });
-
-      const afsprakenPerOperatorDatum = {};
-      gefilterd.forEach((a) => {
-        a.operators.forEach((op) => {
-          const key = `${a.datum}_${op}`;
-          if (!afsprakenPerOperatorDatum[key]) afsprakenPerOperatorDatum[key] = [];
-          afsprakenPerOperatorDatum[key].push(a);
-        });
-      });
-
-      Object.values(afsprakenPerOperatorDatum).forEach((lijst) => lijst.sort((a, b) => a.tijd.localeCompare(b.tijd)));
-
-      gefilterd.forEach((a) => {
-        const hoofdOperator = a.operators[0];
-        const emoji = operatorEmoji[hoofdOperator] || "⚪";
-        let nummering = "";
-        const key = `${a.datum}_${hoofdOperator}`;
-        if (afsprakenPerOperatorDatum[key]?.length > 1) {
-          nummering = afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
-        }
-        const adresZonderPostcode = a.adres.split(" ").filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w)).join(" ");
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.lat + "," + a.lon)}`;
-        const marker = L.marker([a.lat, a.lon], {
-          icon: maakEmojiMarker(emoji),
-        }).addTo(map);
-
-        marker.bindPopup(`
-          <strong>${nummering}${a.operators.join(", ")}</strong><br>
-          ${adresZonderPostcode}<br>
-          ${a.datum} ${a.tijd}<br>
-          ${a.status ? `Status: ${a.status}<br>` : ""}
-          <a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>
-        `);
-
-        marker.on("click", () => {
-          geselecteerdeMarkers.push(marker);
-          if (geselecteerdeMarkers.length === 2) {
-            const [m1, m2] = geselecteerdeMarkers.map((m) => m.getLatLng());
-            const afstand = map.distance(m1, m2) / 1000;
-            document.getElementById("afstandInfo").textContent = `Afstand tussen afspraken: ${afstand.toFixed(2)} km`;
-            geselecteerdeMarkers = [];
-          }
-        });
-
-        allMarkers.push(marker);
-      });
+    async function drawRoute(p1, p2){
+      clearRoute();
+      const url=`https://router.project-osrm.org/route/v1/driving/${p1.lng},${p1.lat};${p2.lng},${p2.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(url), json = await res.json();
+      if(json.code==="Ok"){
+        const route=json.routes[0], distKm=(route.distance/1000).toFixed(2), durMin=(route.duration/60);
+        routeLine=L.geoJSON(route.geometry,{color:"#4fc3f7",weight:4}).addTo(map);
+        const arrive=new Date(Date.now()+route.duration*1000);
+        document.getElementById("afstandInfo").innerHTML =
+          `🛣️ Route: ${distKm} km • 🚗 Reistijd: ${Math.round(durMin)} min • Aankomst tweede afspraak om ${arrive.getHours().toString().padStart(2,'0')}:${arrive.getMinutes().toString().padStart(2,'0')}`;
+      }
     }
 
-    function zoekAdres(e) {
-      const zoek = e.target.value.toLowerCase();
-      allMarkers.forEach((m) => {
-        const popup = m.getPopup();
-        if (popup && popup.getContent().toLowerCase().includes(zoek)) {
-          m.setOpacity(1);
-        } else {
-          m.setOpacity(0.3);
-        }
-      });
-    }
+    function clearRoute(){ if(routeLine) map.removeLayer(routeLine); clearRouteInfo(); }
 
-    function maakEmojiMarker(emoji) {
-      return L.divIcon({
-        className: "emoji-div-icon",
-        html: emoji,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+    function clearRouteInfo(){ document.getElementById("afstandInfo").textContent=""; }
+
+    function zoekFunctie(e){
+      const term=e.target.value.toLowerCase();
+      allMarkers.forEach(m=>{
+        const txt=m.getPopup().getContent().toLowerCase();
+        m.setOpacity(txt.includes(term)?1:0.2);
       });
     }
 
