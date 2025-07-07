@@ -10,6 +10,9 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
+    html, body {
+      height: 100%;
+    }
     body {
       font-family: sans-serif;
       margin: 0;
@@ -58,7 +61,8 @@
       user-select: none;
     }
     #map {
-      height: 75vh;
+      min-height: 400px;
+      height: 75vh !important;
       width: 100%;
     }
     .emoji-div-icon {
@@ -140,69 +144,10 @@
   <div id="output"></div>
 
   <script>
-    // ... bestaande script blijft gelijk ...
-
-    function berekenRouteTussenMarkers() {
-      if (polyline) map.removeLayer(polyline);
-      if (geselecteerdeMarkers.length < 2) return;
-
-      const output = document.getElementById("output");
-      output.innerHTML += `<br><strong>Geselecteerde afspraken:</strong><br>`;
-
-      let totaalMinuten = 0;
-      let punten = [];
-
-      geselecteerdeMarkers.forEach((marker, i) => {
-        const { adres, tijd, lat, lon } = marker.options.data;
-        let aankomst = new Date(0, 0, 0, ...tijd.split(":"));
-        aankomst.setMinutes(aankomst.getMinutes() + totaalMinuten);
-
-        const aankomstStr = `${aankomst.getHours().toString().padStart(2, "0")}:${aankomst.getMinutes().toString().padStart(2, "0")}`;
-        output.innerHTML += `• ${adres} — aankomst ± <strong>${aankomstStr}</strong><br>`;
-
-        if (i < geselecteerdeMarkers.length - 1) {
-          const volgende = geselecteerdeMarkers[i + 1];
-          const afstand = getAfstand(lat, lon, volgende.options.data.lat, volgende.options.data.lon);
-          const reistijdMin = Math.round((afstand / 50) * 60);
-          totaalMinuten += reistijdMin;
-          output.innerHTML += `→ Reistijd naar volgende: ~${reistijdMin} min (${afstand.toFixed(1)} km)<br>`;
-        }
-
-        punten.push([lat, lon]);
-      });
-
-      output.innerHTML += `Totale reistijd: <strong>${totaalMinuten} minuten</strong><br>`;
-      polyline = L.polyline(punten, { color: "cyan", className: "animated-polyline" }).addTo(map);
-    }
-
-    function updateMarkers() {
-      // ... bestaande code blijft gelijk ...
-
-      gefilterd.forEach((a) => {
-        const hoofdOperator = a.operators[0];
-        const emoji = operatorEmoji[hoofdOperator] || "⚪";
-        const marker = L.marker([a.lat, a.lon], {
-          icon: L.divIcon({ className: "emoji-div-icon", html: emoji, iconSize: [24, 24], iconAnchor: [12, 12] }),
-          data: a
-        }).addTo(map);
-
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lon}`;
-        marker.bindPopup(`<strong>${a.operators.join(", ")}</strong><br>${a.adres}<br>${a.datum} ${a.tijd}<br><a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>`);
-
-        marker.on("click", () => {
-          if (geselecteerdeMarkers.includes(marker)) {
-            marker._icon.classList.remove("selected-marker");
-            geselecteerdeMarkers = geselecteerdeMarkers.filter((m) => m !== marker);
-          } else {
-            marker._icon.classList.add("selected-marker");
-            geselecteerdeMarkers.push(marker);
-          }
-          if (geselecteerdeMarkers.length >= 2) berekenRouteTussenMarkers();
-        });
-
-        allMarkers.push(marker);
-      });
-    }
+    const map = L.map("map").setView([52.1, 5.1], 8);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap-bijdragers'
+    }).addTo(map);
   </script>
 </body>
 </html>
