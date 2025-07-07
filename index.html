@@ -144,12 +144,10 @@
 
     async function initMap() {
       map = L.map("map").setView([52.1, 5.1], 7);
-
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
           maxZoom: 18,
         }
       ).addTo(map);
@@ -181,66 +179,7 @@
 
         const operators = medewerker.split(",").map((o) => o.trim());
 
-        afsprakenData.push({
-          datum,
-          tijd,
-          operators,
-          adres,
-          status,
-          lat,
-          lon,
-        });
-      }
-    }
-
-    function maakEmojiMarker(emoji) {
-      return L.divIcon({
-        className: "emoji-div-icon",
-        html: emoji,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-    }
-
-    function buildFilters() {
-      const datumSelect = document.getElementById("datumSelect");
-      const operatorSelect = document.getElementById("operatorSelect");
-      const zoekInput = document.getElementById("zoekInput");
-
-      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort((a, b) => {
-        const [d1, m1, y1] = a.split("-").map(Number);
-        const [d2, m2, y2] = b.split("-").map(Number);
-        return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
-      });
-      uniekeDatums.forEach((d) => {
-        const opt = document.createElement("option");
-        opt.value = d;
-        opt.textContent = d;
-        datumSelect.appendChild(opt);
-      });
-
-      const allOps = afsprakenData.flatMap((a) => a.operators);
-      const uniekeOperators = [...new Set(allOps)].sort();
-      uniekeOperators.forEach((o) => {
-        const opt = document.createElement("option");
-        opt.value = o;
-        opt.textContent = o;
-        operatorSelect.appendChild(opt);
-      });
-
-      datumSelect.addEventListener("change", updateMarkers);
-      operatorSelect.addEventListener("change", updateMarkers);
-      zoekInput.addEventListener("input", updateMarkers);
-    }
-
-    function buildLegend() {
-      const legend = document.getElementById("legend");
-      legend.innerHTML = "<strong>Legenda:</strong>";
-      for (const [naam, emoji] of Object.entries(operatorEmoji)) {
-        const item = document.createElement("div");
-        item.className = "legend-item";
-        item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
-        legend.appendChild(item);
+        afsprakenData.push({ datum, tijd, operators, adres, status, lat, lon });
       }
     }
 
@@ -252,8 +191,7 @@
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos((lat1 * Math.PI) / 180) *
           Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     }
@@ -285,18 +223,14 @@
       });
 
       for (const lijst of Object.values(afsprakenPerOperatorDatum)) {
-        lijst.sort((a, b) => {
-          const [h1, m1] = a.tijd.split(":").map(Number);
-          const [h2, m2] = b.tijd.split(":").map(Number);
-          return h1 * 60 + m1 - (h2 * 60 + m2);
-        });
+        lijst.sort((a, b) => a.tijd.localeCompare(b.tijd));
 
         if (lijst.length > 1) {
           let totalMinutes = 0;
           output.innerHTML += `<strong>${lijst[0].datum} (${lijst[0].operators.join(", ")}):</strong><br>`;
           for (let i = 0; i < lijst.length; i++) {
             const a = lijst[i];
-            const tijd = new Date(0, 0, 0, ...a.tijd.split(":").map(Number));
+            const tijd = new Date(0, 0, 0, ...a.tijd.split(":"));
             const aankomst = new Date(tijd.getTime() + totalMinutes * 60000);
             const aankomstStr = aankomst.getHours().toString().padStart(2, "0") + ":" + aankomst.getMinutes().toString().padStart(2, "0");
             output.innerHTML += `• ${a.adres} — aankomst ± <strong>${aankomstStr}</strong><br>`;
@@ -316,33 +250,56 @@
       gefilterd.forEach((a) => {
         const hoofdOperator = a.operators[0];
         const emoji = operatorEmoji[hoofdOperator] || "⚪";
-
-        const key = `${a.datum}_${hoofdOperator}`;
-        let nummering = "";
-        if (afsprakenPerOperatorDatum[key]?.length > 1) {
-          nummering = afsprakenPerOperatorDatum[key].indexOf(a) + 1 + ". ";
-        }
-
-        const adresZonderPostcode = a.adres
-          .split(" ")
-          .filter((w) => !/^\d{4}\s?[A-Z]{2}$/i.test(w))
-          .join(" ");
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.lat + "," + a.lon)}`;
-
         const marker = L.marker([a.lat, a.lon], {
-          icon: maakEmojiMarker(emoji),
+          icon: L.divIcon({ className: "emoji-div-icon", html: emoji, iconSize: [24, 24], iconAnchor: [12, 12] })
         }).addTo(map);
 
-        marker.bindPopup(`
-          <strong>${nummering}${a.operators.join(", ")}</strong><br>
-          ${adresZonderPostcode}<br>
-          ${a.datum} ${a.tijd}<br>
-          ${a.status ? `Status: ${a.status}<br>` : ""}
-          <a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>
-        `);
+        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lon}`;
+        marker.bindPopup(`<strong>${a.operators.join(", ")}</strong><br>${a.adres}<br>${a.datum} ${a.tijd}<br><a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a>`);
 
         allMarkers.push(marker);
       });
+    }
+
+    function buildFilters() {
+      const datumSelect = document.getElementById("datumSelect");
+      const operatorSelect = document.getElementById("operatorSelect");
+      const zoekInput = document.getElementById("zoekInput");
+
+      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))].sort((a, b) => {
+        const [d1, m1, y1] = a.split("-").map(Number);
+        const [d2, m2, y2] = b.split("-").map(Number);
+        return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
+      });
+      uniekeDatums.forEach((d) => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        datumSelect.appendChild(opt);
+      });
+
+      const uniekeOperators = [...new Set(afsprakenData.flatMap((a) => a.operators))].sort();
+      uniekeOperators.forEach((o) => {
+        const opt = document.createElement("option");
+        opt.value = o;
+        opt.textContent = o;
+        operatorSelect.appendChild(opt);
+      });
+
+      datumSelect.addEventListener("change", updateMarkers);
+      operatorSelect.addEventListener("change", updateMarkers);
+      zoekInput.addEventListener("input", updateMarkers);
+    }
+
+    function buildLegend() {
+      const legend = document.getElementById("legend");
+      legend.innerHTML = "<strong>Legenda:</strong>";
+      for (const [naam, emoji] of Object.entries(operatorEmoji)) {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
+        legend.appendChild(item);
+      }
     }
 
     initMap();
