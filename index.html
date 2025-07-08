@@ -13,7 +13,6 @@
   <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
 
   <style>
-    /* Algemene Stijlen */
     * {
       box-sizing: border-box;
     }
@@ -27,7 +26,6 @@
       overflow-x: hidden;
     }
 
-    /* Topbar */
     #topbar {
       display: flex;
       align-items: center;
@@ -124,7 +122,6 @@
       color: rgba(255, 255, 255, 0.7);
     }
 
-    /* Controls */
     #controls {
       padding: 15px 25px;
       background: linear-gradient(135deg, #1e1e2e 0%, #2d2d3a 100%);
@@ -164,7 +161,6 @@
       color: #FFD700;
     }
 
-    /* Map */
     #map {
       height: 75vh;
       width: 100%;
@@ -173,7 +169,6 @@
       overflow: hidden;
     }
 
-    /* Emoji Marker Styles */
     .emoji-div-icon {
       font-size: 28px;
       line-height: 28px;
@@ -225,7 +220,6 @@
       z-index: -1;
     }
 
-    /* Legend Styles */
     #legend {
       padding: 15px 25px;
       background: linear-gradient(135deg, #1e1e2e 0%, #2d2d3a 100%);
@@ -266,7 +260,6 @@
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     }
 
-    /* Travel Info Styles */
     #travel-info {
       padding: 20px 25px;
       background: linear-gradient(135deg, #2d2d3a 0%, #3d3d4a 100%);
@@ -299,7 +292,6 @@
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     }
 
-    /* Clear Selection Button */
     #clear-selection {
       background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
       color: white;
@@ -322,7 +314,7 @@
       transform: translateY(0);
     }
 
-    /* Loading Animation */
+    /* Loading animation */
     .loading {
       position: fixed;
       top: 50%;
@@ -349,7 +341,7 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Responsive Design */
+    /* Responsive design */
     @media (max-width: 768px) {
       #topbar {
         flex-direction: column;
@@ -381,7 +373,7 @@
       }
     }
 
-    /* Custom Popup Styling */
+    /* Custom popup styling */
     .leaflet-popup-content-wrapper {
       background: linear-gradient(135deg, #1e1e2e 0%, #2d2d3a 100%);
       color: white;
@@ -397,7 +389,6 @@
       color: white;
     }
 
-    /* No Data Message */
     .no-data {
       text-align: center;
       padding: 40px;
@@ -405,7 +396,6 @@
       font-size: 1.1rem;
     }
 
-    /* Error Message */
     .error-message {
       background: rgba(244, 67, 54, 0.1);
       border: 2px solid #f44336;
@@ -416,7 +406,6 @@
       text-align: center;
     }
 
-    /* Search Result Highlight */
     .search-result {
       background: rgba(255, 215, 0, 0.2);
       border: 2px solid #FFD700;
@@ -429,13 +418,12 @@
       50% { opacity: 0.7; }
     }
 
-    /* Past Appointment Opacity */
     .past-appointment {
       opacity: 0.5;
       filter: grayscale(50%);
     }
 
-    /* Traffic Layer Toggle */
+    /* Traffic layer toggle */
     .traffic-toggle {
       position: absolute;
       top: 10px;
@@ -458,19 +446,13 @@
       color: #4CAF50;
     }
 
-    /* Route Line Styling */
+    /* Route line styling */
     .route-line {
       stroke: #007bff; /* Blauwe kleur voor de lijn */
-      stroke-width: 5;
+      stroke-width: 4;
       stroke-dasharray: 20, 10; /* Lengte van de streep, lengte van de ruimte */
-      stroke-dashoffset: 0; /* Startwaarde voor de offset */
       animation: dash 2s linear infinite; /* Snelheid van de animatie */
       opacity: 0.8;
-      transition: stroke-width 0.3s ease; /* Smooth transition for hover effect */
-    }
-
-    .route-line:hover {
-      stroke-width: 7; /* Make line bolder on hover */
     }
 
     @keyframes dash {
@@ -479,7 +461,7 @@
       }
     }
 
-    /* Live Time Indicator for Traffic */
+    /* Time indicator for live traffic */
     .live-time-indicator {
       background: rgba(30, 30, 46, 0.9);
       padding: 5px 10px;
@@ -500,33 +482,6 @@
       opacity: 0.7;
       mix-blend-mode: screen;
     }
-
-    /* Accessibility enhancements */
-    select,
-    input[type="text"],
-    button {
-      cursor: pointer; /* Indicate interactivity */
-    }
-
-    label {
-      display: block; /* Improves layout consistency */
-      margin-bottom: 5px; /* Adds spacing below labels */
-    }
-
-    /* Focus styles for better navigation */
-    select:focus,
-    input[type="text"]:focus,
-    button:focus {
-      outline: 2px solid #FFD700; /* Highlight on focus */
-      outline-offset: 2px; /* Spacing between element and highlight */
-    }
-
-    /* Hover effects */
-    #controls select:hover,
-    #controls input[type="text"]:hover {
-      border-color: #FFD700; /* Highlight on hover */
-      box-shadow: 0 0 15px rgba(255, 215, 0, 0.2); /* Shadow effect on hover */
-    }
   </style>
 </head>
 <body>
@@ -535,7 +490,6 @@
     <div>Laden van afspraken...</div>
   </div>
 
-  <!-- Topbar Section -->
   <div id="topbar">
     <div id="title"><i class="fas fa-map-marked-alt"></i> Afsprakenkaart</div>
     <img id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart Logo" draggable="false" />
@@ -546,7 +500,6 @@
     <input type="text" id="searchInput" placeholder="🔍 Zoek adres of postcode" />
   </div>
 
-  <!-- Controls Section -->
   <div id="controls">
     <label for="datumSelect"><i class="fas fa-calendar"></i> Datum:</label>
     <select id="datumSelect">
@@ -562,18 +515,14 @@
     <button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
   </div>
 
-  <!-- Map Section -->
   <div id="map"></div>
-
-  <!-- Travel Info Section -->
   <div id="travel-info">
     <strong><i class="fas fa-route"></i> Reistijd tussen geselecteerde afspraken:</strong>
     <div id="travel-details"></div>
   </div>
-
-  <!-- Legend Section -->
   <div id="legend"></div>
-   <script>
+
+  <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
     const trafficAPIKey = "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u"; // TomTom API key, reeds ingevuld
 
@@ -814,87 +763,209 @@
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
         const pastMatch = showPast || !isAfspraakInPast(a);
+        return datumMatch && operatorMatch && pastMatch;
+      });
+
+      const todayString = getTodayString();
+      const todayCount = filteredData.filter(a => a.datum === todayString).length;
+      const totalCount = filteredData.length;
+
+      // Animatie voor counter updates
+      animateCounter("count-today", todayCount);
+      animateCounter("count-total", totalCount);
+    }
+
+    function animateCounter(elementId, targetValue) {
+      const element = document.getElementById(elementId);
+      const currentValue = parseInt(element.textContent) || 0;
+      const increment = targetValue > currentValue ? 1 : -1;
+      const duration = 500;
+      const steps = Math.abs(targetValue - currentValue);
+
+      if (steps === 0) return;
+
+      const stepTime = duration / steps;
+      let current = currentValue;
+
+      const timer = setInterval(() => {
+        current += increment;
+        element.textContent = current;
+        if (current === targetValue) {
+          clearInterval(timer);
+        }
+      }, stepTime);
+    }
+
+    function buildFilters() {
+      const datumSelect = document.getElementById("datumSelect");
+      const operatorSelect = document.getElementById("operatorSelect");
+
+      const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))]
+        .sort((a, b) => parseDatum(a) - parseDatum(b));
+
+      uniekeDatums.forEach((d) => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        datumSelect.appendChild(opt);
+      });
+
+      const allOps = afsprakenData.flatMap((a) => a.operators);
+      const uniekeOperators = [...new Set(allOps)].sort();
+
+      uniekeOperators.forEach((o) => {
+        const opt = document.createElement("option");
+        opt.value = o;
+        opt.textContent = o;
+        operatorSelect.appendChild(opt);
+      });
+
+      const updateFunction = debounce(() => {
+        updateMarkers();
+        updateCounter();
+      }, 200);
+
+      datumSelect.addEventListener("change", updateFunction);
+      operatorSelect.addEventListener("change", updateFunction);
+          }
+
+    function buildLegend() {
+      const legend = document.getElementById("legend");
+      legend.innerHTML = "<strong><i class='fas fa-info-circle'></i> Legenda:</strong>";
+
+      for (const [naam, emoji] of Object.entries(operatorEmoji)) {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
+        item.dataset.operator = naam;
+
+        item.addEventListener("click", () => {
+          // Toggle active state
+          if (activeLegendFilter === naam) {
+            item.classList.remove("active");
+            activeLegendFilter = null;
+          } else {
+            // Remove active state from all items
+            document.querySelectorAll(".legend-item").forEach(el => el.classList.remove("active"));
+            item.classList.add("active");
+            activeLegendFilter = naam;
+          }
+
+          updateMarkers();
+        });
+
+        legend.appendChild(item);
+      }
+
+      const selectedItem = document.createElement("div");
+      selectedItem.className = "legend-item";
+      selectedItem.innerHTML = `<span class="legend-icon" style="color: #FFD700;"><i class="fas fa-route"></i></span> Route geselecteerd`;
+      legend.appendChild(selectedItem);
+    }
+
+    function updateMarkers() {
+      // Bewaar geselecteerde markers data voordat we ze verwijderen
+      const selectedPositions = selectedMarkers.map(marker => ({
+        lat: marker.getLatLng().lat,
+        lng: marker.getLatLng().lng
+      }));
+
+      // Verwijder alle bestaande markers
+      allMarkers.forEach(marker => map.removeLayer(marker));
+      allMarkers = [];
+      selectedMarkers = [];
+
+      // Clear search results styling
+      searchResults.forEach(marker => {
+        const element = marker.getElement();
+        if (element) {
+          element.classList.remove('search-result');
+        }
+      });
+      searchResults = [];
+
+      const selectedDatum = document.getElementById("datumSelect").value;
+      const selectedOperator = document.getElementById("operatorSelect").value;
+      const showPast = document.getElementById("showPastAppointments").checked;
+
+      const filteredData = afsprakenData.filter((a) => {
+        const datumMatch = !selectedDatum || a.datum === selectedDatum;
+        const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
+        const pastMatch = showPast || !isAfspraakInPast(a);
         const legendMatch = !activeLegendFilter || a.operators.includes(activeLegendFilter);
         return datumMatch && operatorMatch && pastMatch && legendMatch;
       });
 
       if (filteredData.length === 0) {
-        // Als er geen afspraken zijn, toon dan een bericht op de kaart
-        if (allMarkers.length === 0) {
-          showNoDataMessage();
-        }
-      } else {
-        //
-Voeg markers toe aan de kaart
-        filteredData.forEach((afspraak) => {
-          addMarkerToMap(afspraak);
-        });
+        showError('Geen afspraken gevonden met de huidige filters.');
+        return;
       }
+
+      filteredData.forEach((afspraak) => {
+        const primaryOperator = afspraak.operators[0];
+        const emoji = operatorEmoji[primaryOperator] || "📍";
+        const isPast = isAfspraakInPast(afspraak);
+
+        const icon = L.divIcon({
+          html: `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`,
+          iconSize: [30, 30],
+          className: 'custom-div-icon'
+        });
+
+        const marker = L.marker([afspraak.lat, afspraak.lon], { icon })
+          .addTo(map)
+          .bindPopup(`
+            <div style="padding: 10px; min-width: 200px;">
+              <h3 style="margin: 0 0 10px 0; color: #FFD700;">
+                <i class="fas fa-calendar-day"></i> ${afspraak.datum}
+              </h3>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-clock"></i> <strong>Tijd:</strong> ${afspraak.tijd}
+              </p>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-map-marker-alt"></i> <strong>Adres:</strong> ${afspraak.adres}
+              </p>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-user"></i> <strong>Operator(s):</strong> ${afspraak.operators.join(', ')}
+              </p>
+              <p style="margin: 5px 0;">
+                <i class="fas fa-info-circle"></i> <strong>Status:</strong> ${afspraak.status}
+              </p>
+              ${isPast ? '<p style="margin: 5px 0; color: #ff9800;"><i class="fas fa-history"></i> <strong>Verleden afspraak</strong></p>' : ''}
+              <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+                <small style="color: #ccc;">
+                  <i class="fas fa-mouse-pointer"></i> Klik op de marker om toe te voegen aan selectie
+                </small>
+              </div>
+            </div>
+          `);
+
+        marker.afspraakData = afspraak;
+        marker.on('click', () => toggleMarkerSelection(marker));
+
+        // Herstel selectie als deze marker eerder geselecteerd was
+        const wasSelected = selectedPositions.some(pos =>
+          Math.abs(pos.lat - afspraak.lat) < 0.00001 &&
+          Math.abs(pos.lng - afspraak.lon) < 0.00001
+        );
+
+        if (wasSelected) {
+          selectMarker(marker);
+        }
+
+        allMarkers.push(marker);
+      });
 
       // Auto-fit naar alle markers
       if (allMarkers.length > 0) {
         const group = new L.featureGroup(allMarkers);
         map.fitBounds(group.getBounds().pad(0.1));
-      } else {
-        // Als er geen markers zijn, reset de view naar een standaard zoomniveau
-        map.setView([52.1, 5.1], 7);
       }
 
       // Update reisinfo als er geselecteerde markers waren
-      if (selectedMarkers.length > 0) {
+      if (selectedPositions.length > 0) {
         updateTravelInfo();
       }
-    }
-
-    // Functie om marker aan de kaart toe te voegen
-    function addMarkerToMap(afspraak) {
-      const primaryOperator = afspraak.operators[0];
-      const emoji = operatorEmoji[primaryOperator] || "📍";
-      const isPast = isAfspraakInPast(afspraak);
-
-      const icon = L.divIcon({
-        html: `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`,
-        iconSize: [30, 30],
-        className: 'custom-div-icon'
-      });
-
-      const marker = L.marker([afspraak.lat, afspraak.lon], { icon })
-        .addTo(map)
-        .bindPopup(`
-          <div style="padding: 10px; min-width: 200px;">
-            <h3 style="margin: 0 0 10px 0; color: #FFD700;">
-              <i class="fas fa-calendar-day"></i> ${afspraak.datum}
-            </h3>
-            <p style="margin: 5px 0;">
-              <i class="fas fa-clock"></i> <strong>Tijd:</strong> ${afspraak.tijd}
-            </p>
-            <p style="margin: 5px 0;">
-              <i class="fas fa-map-marker-alt"></i> <strong>Adres:</strong> ${afspraak.adres}
-            </p>
-            <p style="margin: 5px 0;">
-              <i class="fas fa-user"></i> <strong>Operator(s):</strong> ${afspraak.operators.join(', ')}
-            </p>
-            <p style="margin: 5px 0;">
-              <i class="fas fa-info-circle"></i> <strong>Status:</strong> ${afspraak.status}
-            </p>
-            ${isPast ? '<p style="margin: 5px 0; color: #ff9800;"><i class="fas fa-history"></i> <strong>Verleden afspraak</strong></p>' : ''}
-            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
-              <small style="color: #ccc;">
-                <i class="fas fa-mouse-pointer"></i> Klik op de marker om toe te voegen aan selectie
-              </small>
-            </div>
-          </div>
-        `);
-
-      marker.afspraakData = afspraak;
-      marker.on('click', () => toggleMarkerSelection(marker));
-
-      allMarkers.push(marker);
-    }
-
-    function showNoDataMessage() {
-      const noDataMessage = `<div class="no-data"><i class="fas fa-exclamation-triangle"></i> Geen afspraken gevonden met de huidige filters.</div>`;
-      document.getElementById("map").innerHTML = noDataMessage;
     }
 
     function toggleMarkerSelection(marker) {
@@ -1066,18 +1137,15 @@ Voeg markers toe aan de kaart
     async function getTomTomRoute(afspraken) {
       const waypoints = afspraken.map(a => `${a.lon},${a.lat}`).join(':');
       const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=${trafficAPIKey}&travelMode=truck&vehicleCommercial=true&vehicleWeight=7500`;
-      console.log("TomTom API URL:", url); // Log de URL
 
       try {
         const response = await fetch(url);
         if (!response.ok) {
-          const errorText = await response.text(); // Lees de response text
-          throw new Error(`TomTom API error! status: ${response.status}, message: ${errorText}`);
+          throw new Error(`TomTom API error! status: ${response.status}`);
         }
         return await response.json();
       } catch (error) {
         console.error("Error fetching TomTom route:", error);
-        showError('Fout bij ophalen route van TomTom. Controleer de console voor meer details.');
         throw error;
       }
     }
@@ -1221,49 +1289,6 @@ Voeg markers toe aan de kaart
 
     // Initialiseer de app
     document.addEventListener('DOMContentLoaded', initMap);
-
-// Reset de kaart naar de initiële view
-function resetMapView() {
-    map.setView([52.1, 5.1], 7);
-}
-
-// Voeg een reset knop toe aan de controls sectie
-const resetButton = document.createElement('button');
-resetButton.id = 'reset-map-view';
-resetButton.innerHTML = '<i class="fas fa-sync-alt"></i> Reset Kaart View';
-
-// Voeg CSS stijlen toe aan de reset knop
-resetButton.style.background = 'linear-gradient(135deg, #64b5f6 0%, #2196f3 100%)';
-resetButton.style.color = 'white';
-resetButton.style.border = 'none';
-resetButton.style.padding = '8px 15px';
-resetButton.style.borderRadius = '8px';
-resetButton.style.cursor = 'pointer';
-resetButton.style.fontSize = '0.95rem';
-resetButton.style.transition = 'all 0.3s ease';
-resetButton.style.boxShadow = '0 4px 15px rgba(33, 150, 243, 0.3)';
-
-resetButton.addEventListener('mouseover', () => {
-    resetButton.style.background = 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)';
-    resetButton.style.transform = 'translateY(-2px)';
-    resetButton.style.boxShadow = '0 6px 20px rgba(33, 150, 243, 0.4)';
-});
-
-resetButton.addEventListener('mouseout', () => {
-    resetButton.style.background = 'linear-gradient(135deg, #64b5f6 0%, #2196f3 100%)';
-    resetButton.style.transform = 'translateY(0)';
-    resetButton.style.boxShadow = '0 4px 15px rgba(33, 150, 243, 0.3)';
-});
-
-resetButton.addEventListener('active', () => {
-    resetButton.style.transform = 'translateY(0)';
-});
-
-document.getElementById('controls').appendChild(resetButton);
-
-// Voeg een event listener toe aan de reset knop om de resetMapView functie aan te roepen
-resetButton.addEventListener('click', resetMapView);
-
   </script>
 </body>
 </html>
