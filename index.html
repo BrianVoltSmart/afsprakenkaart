@@ -14,9 +14,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <!-- Leaflet PolylineDecorator voor gestippelde lijnen -->
   <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
-  <!-- TomTom Maps SDK -->
-  <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps-web.min.js"></script>
-  <link rel='stylesheet' type='text/css' href='https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps.css'>
 
   <style>
     * {
@@ -694,10 +691,29 @@
 
     function toggleTrafficLayer() {
       if (!trafficLayer) {
-        // TomTom Traffic Layer
-        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u}`, {
+        // Controleer of de API key is ingevuld
+        if (!trafficAPIKey || trafficAPIKey === "YOUR_TOMTOM_API_KEY") {
+          showError("Voer een geldige TomTom API key in");
+          return;
+        }
+
+        // TomTom Traffic Layer met uitgebreide debug-informatie
+        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${trafficAPIKey}`, {
           maxZoom: 18,
-          className: 'tt-traffic-layer'
+          className: 'tt-traffic-layer',
+          detectRetina: true,
+          crossOrigin: true
+        });
+
+        // Voeg een error listener toe voor debugging
+        trafficLayer.on('tileerror', function(error) {
+          console.error('Tile Error:', error);
+          showError('Fout bij laden verkeersinformatie. Controleer API key en internetverbinding.');
+        });
+
+        // Voeg een load listener toe voor debugging
+        trafficLayer.on('tileload', function() {
+          console.log('Verkeerstile geladen');
         });
       }
       
@@ -707,14 +723,27 @@
         document.querySelector('.traffic-toggle').style.color = 'white';
         document.querySelector('.traffic-toggle').classList.remove('active');
       } else {
-        trafficLayer.addTo(map);
-        liveTrafficEnabled = true;
-        document.querySelector('.traffic-toggle').style.color = '#4CAF50';
-        document.querySelector('.traffic-toggle').classList.add('active');
-        
-        // Update reisinfo om live verkeer indicator te tonen
-        if (selectedAfspraken.length >= 2) {
-          updateTravelInfo();
+        // Probeer de laag toe te voegen en vang eventuele errors op
+        try {
+          trafficLayer.addTo(map);
+          liveTrafficEnabled = true;
+          document.querySelector('.traffic-toggle').style.color = '#4CAF50';
+          document.querySelector('.traffic-toggle').classList.add('active');
+          
+          // Zoom in voor betere zichtbaarheid van verkeer
+          if (map.getZoom() < 10) {
+            map.setZoom(10);
+          }
+          
+          // Update reisinfo om live verkeer indicator te tonen
+          if (selectedAfspraken.length >= 2) {
+            updateTravelInfo();
+          }
+        } catch (error) {
+          console.error('Fout bij toevoegen traffic layer:', error);
+          showError('Kon verkeersinformatie niet laden. Controleer API key.');
+          liveTrafficEnabled = false;
+          trafficLayer = null;
         }
       }
     }
