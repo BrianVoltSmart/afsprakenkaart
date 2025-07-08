@@ -12,6 +12,8 @@
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   <!-- Font Awesome voor betere iconen -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <!-- Leaflet PolylineDecorator voor gestippelde lijnen -->
+  <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
 
   <style>
     * {
@@ -186,29 +188,28 @@
     }
 
     .selected-marker {
+      position: relative;
+      z-index: 1000;
+    }
+
+    .selected-marker::after {
+      content: '';
+      position: absolute;
+      top: -15px;
+      left: -15px;
+      right: -15px;
+      bottom: -15px;
       background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 70%);
       border: 3px solid #FFD700;
       border-radius: 50%;
       box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
       animation: pulse 2s infinite;
+      z-index: -1;
     }
 
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.1); }
-    }
-
-    .route-line {
-      stroke: #FFD700;
-      stroke-width: 4;
-      fill: none;
-      stroke-dasharray: 10, 5;
-      animation: dash 2s linear infinite;
-      filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
-    }
-
-    @keyframes dash {
-      to { stroke-dashoffset: -30; }
     }
 
     #legend {
@@ -472,6 +473,53 @@
     .leaflet-bar a:hover {
       background-color: rgba(45, 45, 58, 0.9);
     }
+
+    /* Traffic layer toggle */
+    .traffic-toggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(30, 30, 46, 0.9);
+      padding: 8px;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      color: white;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .traffic-toggle:hover {
+      background: rgba(45, 45, 58, 0.9);
+    }
+
+    /* Route line styling */
+    .route-line {
+      stroke: #FFD700;
+      stroke-width: 4;
+      stroke-dasharray: 10, 5;
+      animation: dash 1s linear infinite;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -15; }
+    }
+
+    /* Time indicator for live traffic */
+    .live-time-indicator {
+      background: rgba(30, 30, 46, 0.9);
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: #4CAF50;
+      font-size: 0.8rem;
+      margin-left: 5px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .live-time-indicator i {
+      margin-right: 5px;
+    }
   </style>
 </head>
 <body>
@@ -514,6 +562,7 @@
 
   <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
+    const trafficAPIKey = "YOUR_TRAFFIC_API_KEY"; // Vervang met je eigen API key
 
     const operatorEmoji = {
       Roelof: "👨‍🌾",
@@ -530,9 +579,12 @@
     let selectedMarkers = [];
     let selectedAfspraken = [];
     let routeControl = null;
+    let routeLine = null;
     let markerCluster = new Map();
     let searchResults = [];
     let activeLegendFilter = null;
+    let trafficLayer = null;
+    let liveTrafficEnabled = false;
 
     // Performance optimalisatie: debounce functie
     function debounce(func, wait) {
@@ -545,18 +597,6 @@
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
       };
-    }
-
-    // Bereken afstand tussen twee punten (Haversine formule)
-    function getAfstand(lat1, lon1, lat2, lon2) {
-      const R = 6371; // Radius van de aarde in km
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
     }
 
     // Nieuwe functie om te checken of een afspraak in het verleden is
@@ -593,6 +633,13 @@
           position: 'bottomright'
         }).addTo(map);
 
+        // Verkeersinformatie toggle
+        const trafficToggle = document.createElement('div');
+        trafficToggle.className = 'traffic-toggle';
+        trafficToggle.innerHTML = '<i class="fas fa-traffic-light"></i> Verkeer';
+        trafficToggle.onclick = toggleTrafficLayer;
+        document.getElementById('map').appendChild(trafficToggle);
+
         await loadAfspraken();
         buildFilters();
         buildLegend();
@@ -617,6 +664,32 @@
         console.error('Initialisatie fout:', error);
         showError('Er is een fout opgetreden bij het laden van de applicatie.');
         showLoading(false);
+      }
+    }
+
+    function toggleTrafficLayer() {
+      if (!trafficLayer) {
+        // Hier zou je een echte traffic API kunnen gebruiken, bijvoorbeeld:
+        // trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${trafficAPIKey}`, {
+        //   maxZoom: 18
+        // });
+        
+        // Voor demo doeleinden gebruiken we een placeholder
+        trafficLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          opacity: 0.5,
+          maxZoom: 18,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+      }
+      
+      if (liveTrafficEnabled) {
+        map.removeLayer(trafficLayer);
+        liveTrafficEnabled = false;
+        document.querySelector('.traffic-toggle').style.color = 'white';
+      } else {
+        trafficLayer.addTo(map);
+        liveTrafficEnabled = true;
+        document.querySelector('.traffic-toggle').style.color = '#4CAF50';
       }
     }
 
@@ -921,9 +994,11 @@
       const element = marker.getElement();
       if (element) {
         element.classList.add('selected-marker');
-        // Behoud de emoji door deze opnieuw toe te voegen
-        const emoji = operatorEmoji[marker.afspraakData.operators[0]] || "📍";
-        element.innerHTML = `<div class="emoji-div-icon">${emoji}</div>`;
+        // Behoud de emoji door de originele HTML te herstellen
+        const primaryOperator = marker.afspraakData.operators[0];
+        const emoji = operatorEmoji[primaryOperator] || "📍";
+        const isPast = isAfspraakInPast(marker.afspraakData);
+        element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
       }
     }
 
@@ -936,8 +1011,9 @@
         const element = marker.getElement();
         if (element) {
           element.classList.remove('selected-marker');
-          // Behoud de emoji door deze opnieuw toe te voegen
-          const emoji = operatorEmoji[marker.afspraakData.operators[0]] || "📍";
+          // Behoud de emoji door de originele HTML te herstellen
+          const primaryOperator = marker.afspraakData.operators[0];
+          const emoji = operatorEmoji[primaryOperator] || "📍";
           const isPast = isAfspraakInPast(marker.afspraakData);
           element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
         }
@@ -949,8 +1025,9 @@
         const element = marker.getElement();
         if (element) {
           element.classList.remove('selected-marker');
-          // Behoud de emoji door deze opnieuw toe te voegen
-          const emoji = operatorEmoji[marker.afspraakData.operators[0]] || "📍";
+          // Behoud de emoji door de originele HTML te herstellen
+          const primaryOperator = marker.afspraakData.operators[0];
+          const emoji = operatorEmoji[primaryOperator] || "📍";
           const isPast = isAfspraakInPast(marker.afspraakData);
           element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
         }
@@ -965,6 +1042,12 @@
         routeControl = null;
       }
       
+      // Verwijder eventuele route lijn
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      
       document.getElementById("travel-info").style.display = "none";
     }
 
@@ -977,6 +1060,10 @@
         if (routeControl) {
           map.removeControl(routeControl);
           routeControl = null;
+        }
+        if (routeLine) {
+          map.removeLayer(routeLine);
+          routeLine = null;
         }
         return;
       }
@@ -993,12 +1080,17 @@
         map.removeControl(routeControl);
       }
       
+      // Verwijder eventuele route lijn
+      if (routeLine) {
+        map.removeLayer(routeLine);
+      }
+      
       // Maak waypoints voor de route
       const waypoints = sortedAfspraken.map(afspraak => 
         L.latLng(afspraak.lat, afspraak.lon)
       );
       
-      // Voeg routing control toe
+      // Voeg routing control toe (verborgen)
       routeControl = L.Routing.control({
         waypoints: waypoints,
         routeWhileDragging: false,
@@ -1007,7 +1099,7 @@
         addWaypoints: false,
         draggableWaypoints: false,
         lineOptions: {
-          styles: [{color: '#FFD700', opacity: 0.8, weight: 4, dashArray: '10,5'}],
+          styles: [{color: '#FFD700', opacity: 0.8, weight: 4}],
           extendToWaypoints: true,
           missingRouteTolerance: 1
         },
@@ -1021,19 +1113,42 @@
         let totalTime = 0;
         let segments = [];
         
-        routes[0].coordinates.forEach((coord, i, arr) => {
-          if (i === 0) return;
-          
-          const prevCoord = arr[i-1];
-          const segmentDistance = L.GeometryUtil.length([
-            L.latLng(prevCoord.lat, prevCoord.lng),
-            L.latLng(coord.lat, coord.lng)
-          ]);
-          
-          totalDistance += segmentDistance;
-        });
+        // Verwijder de routing control (we willen alleen de lijn)
+        map.removeControl(routeControl);
+        routeControl = null;
         
-        totalTime = routes[0].summary.totalTime;
+        // Teken de route lijn met decorator voor gestippeld effect
+        if (routeLine) {
+          map.removeLayer(routeLine);
+        }
+        
+        routeLine = L.polyline(routes[0].coordinates, {
+          color: '#FFD700',
+          weight: 4,
+          opacity: 0.8
+        }).addTo(map);
+        
+        // Voeg decorator toe voor gestippeld effect
+        L.polylineDecorator(routeLine, {
+          patterns: [
+            {
+              offset: 0,
+              repeat: 15,
+              symbol: L.Symbol.dash({
+                pixelSize: 10,
+                pathOptions: {
+                  color: '#FFD700',
+                  weight: 4,
+                  opacity: 0.8
+                }
+              })
+            }
+          ]
+        }).addTo(map);
+        
+        // Bereken totale afstand en tijd
+        totalDistance = routes[0].summary.totalDistance / 1000; // km
+        totalTime = routes[0].summary.totalTime / 60; // minuten
         
         // Bereken segmenten tussen waypoints
         for (let i = 0; i < sortedAfspraken.length - 1; i++) {
@@ -1045,18 +1160,22 @@
             inst.waypointIndex === i
           );
           
-          const segmentTime = segment ? segment.time : 0;
-          const segmentDistance = segment ? segment.distance : 0;
+          const segmentTime = segment ? segment.time / 60 : 0; // minuten
+          const segmentDistance = segment ? segment.distance / 1000 : 0; // km
           
           segments.push({
             from: from.adres,
             to: to.adres,
-            distance: (segmentDistance / 1000).toFixed(1),
-            time: Math.round(segmentTime / 60), // omzetten naar minuten
+            distance: segmentDistance.toFixed(1),
+            time: Math.round(segmentTime),
             fromTime: from.tijd,
             toTime: to.tijd
           });
         }
+        
+        // Toon live tijd indicator als verkeersinformatie aan staat
+        const liveTimeIndicator = liveTrafficEnabled ? 
+          `<span class="live-time-indicator"><i class="fas fa-bolt"></i>Live verkeer</span>` : '';
         
         // Toon travel info
         travelDetails.innerHTML = segments.map(segment => `
@@ -1064,12 +1183,12 @@
             <div><strong><i class="fas fa-map-marker-alt"></i> Van:</strong> ${segment.from} (${segment.fromTime})</div>
             <div><strong><i class="fas fa-map-marker-alt"></i> Naar:</strong> ${segment.to} (${segment.toTime})</div>
             <div><strong><i class="fas fa-route"></i> Afstand:</strong> ${segment.distance} km</div>
-            <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min</div>
+            <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min ${liveTrafficEnabled ? liveTimeIndicator : ''}</div>
           </div>
         `).join('') + `
           <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
-            <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${(totalDistance / 1000).toFixed(1)} km</div>
-            <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime / 60)} min (${(totalTime / 3600).toFixed(1)} uur)</div>
+            <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
+            <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime / 60).toFixed(1)} uur) ${liveTrafficEnabled ? liveTimeIndicator : ''}</div>
           </div>
         `;
         
@@ -1092,6 +1211,18 @@
       let totalDistance = 0;
       let totalTime = 0;
       let segments = [];
+      
+      // Teken eenvoudige lijn tussen punten als fallback
+      const latlngs = sortedAfspraken.map(a => [a.lat, a.lon]);
+      if (routeLine) {
+        map.removeLayer(routeLine);
+      }
+      routeLine = L.polyline(latlngs, {
+        color: '#FFD700',
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '10,5'
+      }).addTo(map);
       
       for (let i = 0; i < sortedAfspraken.length - 1; i++) {
         const from = sortedAfspraken[i];
