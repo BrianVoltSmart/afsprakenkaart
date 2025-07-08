@@ -573,8 +573,7 @@
 
   <!-- Legend Section -->
   <div id="legend"></div>
-
-  <script>
+   <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
     const trafficAPIKey = "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u"; // TomTom API key, reeds ingevuld
 
@@ -811,74 +810,6 @@
       const selectedOperator = document.getElementById("operatorSelect").value;
       const showPast = document.getElementById("showPastAppointments").checked;
 
-      const filteredData = afspra      const filterFunction = debounce(() => {
-        updateMarkers();
-        updateCounter();
-      }, 200);
-
-      datumSelect.addEventListener("change", filterFunction);
-      operatorSelect.addEventListener("change", filterFunction);
-    }
-
-    function buildLegend() {
-      const legend = document.getElementById("legend");
-      legend.innerHTML = "<strong><i class='fas fa-info-circle'></i> Legenda:</strong>";
-
-      for (const [naam, emoji] of Object.entries(operatorEmoji)) {
-        const item = document.createElement("div");
-        item.className = "legend-item";
-        item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
-        item.dataset.operator = naam;
-
-        item.addEventListener("click", () => {
-          // Toggle active state
-          if (activeLegendFilter === naam) {
-            item.classList.remove("active");
-            activeLegendFilter = null;
-          } else {
-            // Remove active state from all items
-            document.querySelectorAll(".legend-item").forEach(el => el.classList.remove("active"));
-            item.classList.add("active");
-            activeLegendFilter = naam;
-          }
-
-          updateMarkers();
-        });
-
-        legend.appendChild(item);
-      }
-
-      const selectedItem = document.createElement("div");
-      selectedItem.className = "legend-item";
-      selectedItem.innerHTML = `<span class="legend-icon" style="color: #FFD700;"><i class="fas fa-route"></i></span> Route geselecteerd`;
-      legend.appendChild(selectedItem);
-    }
-
-    function updateMarkers() {
-      // Bewaar geselecteerde markers data voordat we ze verwijderen
-      const selectedPositions = selectedMarkers.map(marker => ({
-        lat: marker.getLatLng().lat,
-        lng: marker.getLatLng().lng
-      }));
-
-      // Verwijder alle bestaande markers
-      allMarkers.forEach(marker => map.removeLayer(marker));
-      allMarkers = [];
-      selectedMarkers = [];
-
-      // Clear search results styling
-      searchResults.forEach(marker => {
-        const element = marker.getElement();
-        if (element) {
-          element.classList.remove('search-result');
-        }
-      });
-      searchResults = [];
-
-      const selectedDatum = document.getElementById("datumSelect").value;
-      const selectedOperator = document.getElementById("operatorSelect").value;
-      const showPast = document.getElementById("showPastAppointments").checked;
-
       const filteredData = afsprakenData.filter((a) => {
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
@@ -888,75 +819,82 @@
       });
 
       if (filteredData.length === 0) {
-        showError('Geen afspraken gevonden met de huidige filters.');
-        return;
-      }
-
-      filteredData.forEach((afspraak) => {
-        const primaryOperator = afspraak.operators[0];
-        const emoji = operatorEmoji[primaryOperator] || "📍";
-        const isPast = isAfspraakInPast(afspraak);
-
-        const icon = L.divIcon({
-          html: `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`,
-          iconSize: [30, 30],
-          className: 'custom-div-icon'
-        });
-
-        const marker = L.marker([afspraak.lat, afspraak.lon], { icon })
-          .addTo(map)
-          .bindPopup(`
-            <div style="padding: 10px; min-width: 200px;">
-              <h3 style="margin: 0 0 10px 0; color: #FFD700;">
-                <i class="fas fa-calendar-day"></i> ${afspraak.datum}
-              </h3>
-              <p style="margin: 5px 0;">
-                <i class="fas fa-clock"></i> <strong>Tijd:</strong> ${afspraak.tijd}
-              </p>
-              <p style="margin: 5px 0;">
-                <i class="fas fa-map-marker-alt"></i> <strong>Adres:</strong> ${afspraak.adres}
-              </p>
-              <p style="margin: 5px 0;">
-                <i class="fas fa-user"></i> <strong>Operator(s):</strong> ${afspraak.operators.join(', ')}
-              </p>
-              <p style="margin: 5px 0;">
-                <i class="fas fa-info-circle"></i> <strong>Status:</strong> ${afspraak.status}
-              </p>
-              ${isPast ? '<p style="margin: 5px 0; color: #ff9800;"><i class="fas fa-history"></i> <strong>Verleden afspraak</strong></p>' : ''}
-              <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
-                <small style="color: #ccc;">
-                  <i class="fas fa-mouse-pointer"></i> Klik op de marker om toe te voegen aan selectie
-                </small>
-              </div>
-            </div>
-          `);
-
-        marker.afspraakData = afspraak;
-        marker.on('click', () => toggleMarkerSelection(marker));
-
-        // Herstel selectie als deze marker eerder geselecteerd was
-        const wasSelected = selectedPositions.some(pos =>
-          Math.abs(pos.lat - afspraak.lat) < 0.00001 &&
-          Math.abs(pos.lng - afspraak.lon) < 0.00001
-        );
-
-        if (wasSelected) {
-          selectMarker(marker);
+        // Als er geen afspraken zijn, toon dan een bericht op de kaart
+        if (allMarkers.length === 0) {
+          showNoDataMessage();
         }
-
-        allMarkers.push(marker);
-      });
+      } else {
+        //
+Voeg markers toe aan de kaart
+        filteredData.forEach((afspraak) => {
+          addMarkerToMap(afspraak);
+        });
+      }
 
       // Auto-fit naar alle markers
       if (allMarkers.length > 0) {
         const group = new L.featureGroup(allMarkers);
         map.fitBounds(group.getBounds().pad(0.1));
+      } else {
+        // Als er geen markers zijn, reset de view naar een standaard zoomniveau
+        map.setView([52.1, 5.1], 7);
       }
 
       // Update reisinfo als er geselecteerde markers waren
-      if (selectedPositions.length > 0) {
+      if (selectedMarkers.length > 0) {
         updateTravelInfo();
       }
+    }
+
+    // Functie om marker aan de kaart toe te voegen
+    function addMarkerToMap(afspraak) {
+      const primaryOperator = afspraak.operators[0];
+      const emoji = operatorEmoji[primaryOperator] || "📍";
+      const isPast = isAfspraakInPast(afspraak);
+
+      const icon = L.divIcon({
+        html: `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`,
+        iconSize: [30, 30],
+        className: 'custom-div-icon'
+      });
+
+      const marker = L.marker([afspraak.lat, afspraak.lon], { icon })
+        .addTo(map)
+        .bindPopup(`
+          <div style="padding: 10px; min-width: 200px;">
+            <h3 style="margin: 0 0 10px 0; color: #FFD700;">
+              <i class="fas fa-calendar-day"></i> ${afspraak.datum}
+            </h3>
+            <p style="margin: 5px 0;">
+              <i class="fas fa-clock"></i> <strong>Tijd:</strong> ${afspraak.tijd}
+            </p>
+            <p style="margin: 5px 0;">
+              <i class="fas fa-map-marker-alt"></i> <strong>Adres:</strong> ${afspraak.adres}
+            </p>
+            <p style="margin: 5px 0;">
+              <i class="fas fa-user"></i> <strong>Operator(s):</strong> ${afspraak.operators.join(', ')}
+            </p>
+            <p style="margin: 5px 0;">
+              <i class="fas fa-info-circle"></i> <strong>Status:</strong> ${afspraak.status}
+            </p>
+            ${isPast ? '<p style="margin: 5px 0; color: #ff9800;"><i class="fas fa-history"></i> <strong>Verleden afspraak</strong></p>' : ''}
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+              <small style="color: #ccc;">
+                <i class="fas fa-mouse-pointer"></i> Klik op de marker om toe te voegen aan selectie
+              </small>
+            </div>
+          </div>
+        `);
+
+      marker.afspraakData = afspraak;
+      marker.on('click', () => toggleMarkerSelection(marker));
+
+      allMarkers.push(marker);
+    }
+
+    function showNoDataMessage() {
+      const noDataMessage = `<div class="no-data"><i class="fas fa-exclamation-triangle"></i> Geen afspraken gevonden met de huidige filters.</div>`;
+      document.getElementById("map").innerHTML = noDataMessage;
     }
 
     function toggleMarkerSelection(marker) {
@@ -1283,6 +1221,49 @@
 
     // Initialiseer de app
     document.addEventListener('DOMContentLoaded', initMap);
+
+// Reset de kaart naar de initiële view
+function resetMapView() {
+    map.setView([52.1, 5.1], 7);
+}
+
+// Voeg een reset knop toe aan de controls sectie
+const resetButton = document.createElement('button');
+resetButton.id = 'reset-map-view';
+resetButton.innerHTML = '<i class="fas fa-sync-alt"></i> Reset Kaart View';
+
+// Voeg CSS stijlen toe aan de reset knop
+resetButton.style.background = 'linear-gradient(135deg, #64b5f6 0%, #2196f3 100%)';
+resetButton.style.color = 'white';
+resetButton.style.border = 'none';
+resetButton.style.padding = '8px 15px';
+resetButton.style.borderRadius = '8px';
+resetButton.style.cursor = 'pointer';
+resetButton.style.fontSize = '0.95rem';
+resetButton.style.transition = 'all 0.3s ease';
+resetButton.style.boxShadow = '0 4px 15px rgba(33, 150, 243, 0.3)';
+
+resetButton.addEventListener('mouseover', () => {
+    resetButton.style.background = 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)';
+    resetButton.style.transform = 'translateY(-2px)';
+    resetButton.style.boxShadow = '0 6px 20px rgba(33, 150, 243, 0.4)';
+});
+
+resetButton.addEventListener('mouseout', () => {
+    resetButton.style.background = 'linear-gradient(135deg, #64b5f6 0%, #2196f3 100%)';
+    resetButton.style.transform = 'translateY(0)';
+    resetButton.style.boxShadow = '0 4px 15px rgba(33, 150, 243, 0.3)';
+});
+
+resetButton.addEventListener('active', () => {
+    resetButton.style.transform = 'translateY(0)';
+});
+
+document.getElementById('controls').appendChild(resetButton);
+
+// Voeg een event listener toe aan de reset knop om de resetMapView functie aan te roepen
+resetButton.addEventListener('click', resetMapView);
+
   </script>
 </body>
 </html>
