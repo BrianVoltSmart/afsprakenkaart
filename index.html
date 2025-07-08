@@ -1,3 +1,8 @@
+Oké, ik ga de code aanpassen zoals je hebt gevraagd. Dit omvat het vervangen van OSRM door TomTom, het toevoegen van een pulserende blauwe lijn tussen de afspraken, het optimaliseren van de code, en het invullen van de TomTom API-key.
+
+Hier is de aangepaste code:
+
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -7,9 +12,6 @@
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Leaflet Routing Machine -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   <!-- Font Awesome voor betere iconen -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <!-- Leaflet PolylineDecorator voor gestippelde lijnen -->
@@ -426,65 +428,6 @@
       filter: grayscale(50%);
     }
 
-    /* Routing machine styling */
-    .leaflet-routing-container {
-      background: rgba(30, 30, 46, 0.9);
-      color: white;
-      border-radius: 8px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-    }
-
-    .leaflet-routing-alt {
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .leaflet-routing-alt table {
-      color: white;
-      width: 100%;
-    }
-
-    .leaflet-routing-alt table tr:hover {
-      background: rgba(255, 215, 0, 0.1);
-    }
-
-    .leaflet-routing-alt table tr:nth-child(odd) {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .leaflet-routing-alt table tr:nth-child(even) {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .leaflet-routing-geocoders input {
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .leaflet-routing-geocoders button {
-      background: rgba(255, 215, 0, 0.7);
-      color: #333;
-    }
-
-    .leaflet-routing-geocoders button:hover {
-      background: rgba(255, 215, 0, 0.9);
-    }
-
-    .leaflet-routing-error {
-      color: #ff6b6b;
-    }
-
-    .leaflet-bar a {
-      background-color: rgba(30, 30, 46, 0.9);
-      color: white;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .leaflet-bar a:hover {
-      background-color: rgba(45, 45, 58, 0.9);
-    }
-
     /* Traffic layer toggle */
     .traffic-toggle {
       position: absolute;
@@ -510,14 +453,17 @@
 
     /* Route line styling */
     .route-line {
-      stroke: #FFD700;
+      stroke: #007bff; /* Blauwe kleur voor de lijn */
       stroke-width: 4;
-      stroke-dasharray: 10, 5;
-      animation: dash 1s linear infinite;
+      stroke-dasharray: 20, 10; /* Lengte van de streep, lengte van de ruimte */
+      animation: dash 2s linear infinite; /* Snelheid van de animatie */
+      opacity: 0.8;
     }
 
     @keyframes dash {
-      to { stroke-dashoffset: -15; }
+      to {
+        stroke-dashoffset: -30; /* Schuift de strepen op voor een pulserend effect */
+      }
     }
 
     /* Time indicator for live traffic */
@@ -583,7 +529,7 @@
 
   <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
-    const trafficAPIKey = "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u"; // Vervang met je eigen TomTom API key
+    const trafficAPIKey = "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u"; // TomTom API key, reeds ingevuld
 
     const operatorEmoji = {
       Roelof: "👨‍🌾",
@@ -599,14 +545,11 @@
     let afsprakenData = [];
     let selectedMarkers = [];
     let selectedAfspraken = [];
-    let routeControl = null;
     let routeLine = null;
-    let routeDecorator = null;
-    let markerCluster = new Map();
-    let searchResults = [];
-    let activeLegendFilter = null;
     let trafficLayer = null;
     let liveTrafficEnabled = false;
+    let searchResults = [];
+    let activeLegendFilter = null;
 
     // Performance optimalisatie: debounce functie
     function debounce(func, wait) {
@@ -621,14 +564,14 @@
       };
     }
 
-    // Nieuwe functie om te checken of een afspraak in het verleden is
+    // Functie om te checken of een afspraak in het verleden is
     function isAfspraakInPast(afspraak) {
       const now = new Date();
       const afspraakDate = parseDatumEnTijd(afspraak.datum, afspraak.tijd);
       return afspraakDate < now;
     }
 
-    // Nieuwe functie om datum en tijd te parsen
+    // Functie om datum en tijd te parsen
     function parseDatumEnTijd(datumStr, tijdStr) {
       const [dag, maand, jaar] = datumStr.split("-").map(Number);
       const [uren, minuten] = tijdStr.split(":").map(Number);
@@ -637,7 +580,7 @@
 
     async function initMap() {
       showLoading(true);
-      
+
       try {
         map = L.map("map", {
           zoomControl: false,
@@ -667,11 +610,11 @@
         buildLegend();
         updateMarkers();
         updateCounter();
-        
+
         document.getElementById("clear-selection").addEventListener("click", clearSelection);
-        
+
         // Debounced search
-        document.getElementById("searchInput").addEventListener("input", 
+        document.getElementById("searchInput").addEventListener("input",
           debounce(handleSearch, 300)
         );
 
@@ -698,7 +641,7 @@
         }
 
         // TomTom Traffic Layer met uitgebreide debug-informatie
-        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u}`, {
+        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${trafficAPIKey}`, {
           maxZoom: 18,
           className: 'tt-traffic-layer',
           detectRetina: true,
@@ -706,17 +649,17 @@
         });
 
         // Voeg een error listener toe voor debugging
-        trafficLayer.on('tileerror', function(error) {
+        trafficLayer.on('tileerror', function (error) {
           console.error('Tile Error:', error);
           showError('Fout bij laden verkeersinformatie. Controleer API key en internetverbinding.');
         });
 
         // Voeg een load listener toe voor debugging
-        trafficLayer.on('tileload', function() {
+        trafficLayer.on('tileload', function () {
           console.log('Verkeerstile geladen');
         });
       }
-      
+
       if (liveTrafficEnabled) {
         map.removeLayer(trafficLayer);
         liveTrafficEnabled = false;
@@ -729,12 +672,12 @@
           liveTrafficEnabled = true;
           document.querySelector('.traffic-toggle').style.color = '#4CAF50';
           document.querySelector('.traffic-toggle').classList.add('active');
-          
+
           // Zoom in voor betere zichtbaarheid van verkeer
           if (map.getZoom() < 10) {
             map.setZoom(10);
           }
-          
+
           // Update reisinfo om live verkeer indicator te tonen
           if (selectedAfspraken.length >= 2) {
             updateTravelInfo();
@@ -757,7 +700,7 @@
       errorDiv.className = 'error-message';
       errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
       document.body.appendChild(errorDiv);
-      
+
       setTimeout(() => {
         if (document.body.contains(errorDiv)) {
           document.body.removeChild(errorDiv);
@@ -771,14 +714,14 @@
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
-        
+
         const csvText = await res.text();
         const rows = csvText.split("\n").slice(1);
         afsprakenData = [];
-        
+
         for (const row of rows) {
           if (!row.trim()) continue;
-          
+
           const cols = row.split(",");
           const datum = cols[0]?.trim();
           const medewerker = cols[1]?.trim();
@@ -787,13 +730,13 @@
           const tijd = cols[4]?.trim();
           const lat = parseFloat(cols[7]);
           const lon = parseFloat(cols[8]);
-          
+
           if (!adres || !datum || !medewerker || !tijd || isNaN(lat) || isNaN(lon)) continue;
-          
+
           const operators = medewerker.split(",").map((o) => o.trim());
           afsprakenData.push({ datum, tijd, operators, adres, status, lat, lon });
         }
-        
+
         if (afsprakenData.length === 0) {
           showError('Geen afspraken gevonden in de data.');
         }
@@ -820,7 +763,7 @@
       const selectedDatum = document.getElementById("datumSelect").value;
       const selectedOperator = document.getElementById("operatorSelect").value;
       const showPast = document.getElementById("showPastAppointments").checked;
-      
+
       const filteredData = afsprakenData.filter((a) => {
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
@@ -843,12 +786,12 @@
       const increment = targetValue > currentValue ? 1 : -1;
       const duration = 500;
       const steps = Math.abs(targetValue - currentValue);
-      
+
       if (steps === 0) return;
-      
+
       const stepTime = duration / steps;
       let current = currentValue;
-      
+
       const timer = setInterval(() => {
         current += increment;
         element.textContent = current;
@@ -864,7 +807,7 @@
 
       const uniekeDatums = [...new Set(afsprakenData.map((a) => a.datum))]
         .sort((a, b) => parseDatum(a) - parseDatum(b));
-      
+
       uniekeDatums.forEach((d) => {
         const opt = document.createElement("option");
         opt.value = d;
@@ -874,7 +817,7 @@
 
       const allOps = afsprakenData.flatMap((a) => a.operators);
       const uniekeOperators = [...new Set(allOps)].sort();
-      
+
       uniekeOperators.forEach((o) => {
         const opt = document.createElement("option");
         opt.value = o;
@@ -889,18 +832,18 @@
 
       datumSelect.addEventListener("change", updateFunction);
       operatorSelect.addEventListener("change", updateFunction);
-    }
+          }
 
     function buildLegend() {
       const legend = document.getElementById("legend");
       legend.innerHTML = "<strong><i class='fas fa-info-circle'></i> Legenda:</strong>";
-      
+
       for (const [naam, emoji] of Object.entries(operatorEmoji)) {
         const item = document.createElement("div");
         item.className = "legend-item";
         item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
         item.dataset.operator = naam;
-        
+
         item.addEventListener("click", () => {
           // Toggle active state
           if (activeLegendFilter === naam) {
@@ -912,13 +855,13 @@
             item.classList.add("active");
             activeLegendFilter = naam;
           }
-          
+
           updateMarkers();
         });
-        
+
         legend.appendChild(item);
       }
-      
+
       const selectedItem = document.createElement("div");
       selectedItem.className = "legend-item";
       selectedItem.innerHTML = `<span class="legend-icon" style="color: #FFD700;"><i class="fas fa-route"></i></span> Route geselecteerd`;
@@ -931,12 +874,12 @@
         lat: marker.getLatLng().lat,
         lng: marker.getLatLng().lng
       }));
-      
+
       // Verwijder alle bestaande markers
       allMarkers.forEach(marker => map.removeLayer(marker));
       allMarkers = [];
       selectedMarkers = [];
-      
+
       // Clear search results styling
       searchResults.forEach(marker => {
         const element = marker.getElement();
@@ -945,11 +888,11 @@
         }
       });
       searchResults = [];
-      
+
       const selectedDatum = document.getElementById("datumSelect").value;
       const selectedOperator = document.getElementById("operatorSelect").value;
       const showPast = document.getElementById("showPastAppointments").checked;
-      
+
       const filteredData = afsprakenData.filter((a) => {
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
@@ -957,23 +900,23 @@
         const legendMatch = !activeLegendFilter || a.operators.includes(activeLegendFilter);
         return datumMatch && operatorMatch && pastMatch && legendMatch;
       });
-      
+
       if (filteredData.length === 0) {
         showError('Geen afspraken gevonden met de huidige filters.');
         return;
       }
-      
+
       filteredData.forEach((afspraak) => {
         const primaryOperator = afspraak.operators[0];
         const emoji = operatorEmoji[primaryOperator] || "📍";
         const isPast = isAfspraakInPast(afspraak);
-        
+
         const icon = L.divIcon({
           html: `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`,
           iconSize: [30, 30],
           className: 'custom-div-icon'
         });
-        
+
         const marker = L.marker([afspraak.lat, afspraak.lon], { icon })
           .addTo(map)
           .bindPopup(`
@@ -1001,29 +944,29 @@
               </div>
             </div>
           `);
-        
+
         marker.afspraakData = afspraak;
         marker.on('click', () => toggleMarkerSelection(marker));
-        
+
         // Herstel selectie als deze marker eerder geselecteerd was
-        const wasSelected = selectedPositions.some(pos => 
-          Math.abs(pos.lat - afspraak.lat) < 0.00001 && 
+        const wasSelected = selectedPositions.some(pos =>
+          Math.abs(pos.lat - afspraak.lat) < 0.00001 &&
           Math.abs(pos.lng - afspraak.lon) < 0.00001
         );
-        
+
         if (wasSelected) {
           selectMarker(marker);
         }
-        
+
         allMarkers.push(marker);
       });
-      
+
       // Auto-fit naar alle markers
       if (allMarkers.length > 0) {
         const group = new L.featureGroup(allMarkers);
         map.fitBounds(group.getBounds().pad(0.1));
       }
-      
+
       // Update reisinfo als er geselecteerde markers waren
       if (selectedPositions.length > 0) {
         updateTravelInfo();
@@ -1042,10 +985,10 @@
 
     function selectMarker(marker) {
       if (selectedMarkers.includes(marker)) return;
-      
+
       selectedMarkers.push(marker);
       selectedAfspraken.push(marker.afspraakData);
-      
+
       const element = marker.getElement();
       if (element) {
         element.classList.add('selected-marker');
@@ -1061,7 +1004,7 @@
       if (index > -1) {
         selectedMarkers.splice(index, 1);
         selectedAfspraken.splice(index, 1);
-        
+
         const element = marker.getElement();
         if (element) {
           element.classList.remove('selected-marker');
@@ -1070,7 +1013,7 @@
           const isPast = isAfspraakInPast(marker.afspraakData);
           element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
         }
-        
+
         // Verwijder route als er minder dan 2 markers over zijn
         if (selectedMarkers.length < 2) {
           removeRoute();
@@ -1081,7 +1024,7 @@
     function clearSelection() {
       // Verwijder eerst de route
       removeRoute();
-      
+
       // Verwijder dan de highlights
       selectedMarkers.forEach(marker => {
         const element = marker.getElement();
@@ -1093,7 +1036,7 @@
           element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
         }
       });
-      
+
       selectedMarkers = [];
       selectedAfspraken = [];
       document.getElementById("travel-info").style.display = "none";
@@ -1101,190 +1044,169 @@
 
     // Nieuwe hulpfunctie om route te verwijderen
     function removeRoute() {
-      if (routeControl) {
-        map.removeControl(routeControl);
-        routeControl = null;
-      }
       if (routeLine) {
         map.removeLayer(routeLine);
         routeLine = null;
-      }
-      // Verwijder ook eventuele decorators
-      if (routeDecorator) {
-        map.removeLayer(routeDecorator);
-        routeDecorator = null;
       }
     }
 
     function updateTravelInfo() {
       const travelInfo = document.getElementById("travel-info");
       const travelDetails = document.getElementById("travel-details");
-      
+
       if (selectedAfspraken.length < 2) {
         travelInfo.style.display = "none";
         removeRoute();
         return;
       }
-      
+
       // Sorteer afspraken op datum en tijd
       const sortedAfspraken = [...selectedAfspraken].sort((a, b) => {
         const dateA = parseDatumEnTijd(a.datum, a.tijd);
         const dateB = parseDatumEnTijd(b.datum, b.tijd);
         return dateA - dateB;
       });
-      
-      // Verwijder bestaande route control
+
+      // Verwijder bestaande route
       removeRoute();
-      
-      // Maak waypoints voor de route
-      const waypoints = sortedAfspraken.map(afspraak => 
-        L.latLng(afspraak.lat, afspraak.lon)
-      );
-      
-      // Voeg routing control toe (verborgen)
-      routeControl = L.Routing.control({
-        waypoints: waypoints,
-        routeWhileDragging: false,
-        show: false, // Verberg de standaard route instructies
-        fitSelectedRoutes: false,
-        addWaypoints: false,
-        draggableWaypoints: false,
-        lineOptions: {
-          styles: [{color: '#FFD700', opacity: 0.8, weight: 4}],
-          extendToWaypoints: true,
-          missingRouteTolerance: 1
-        },
-        createMarker: function() { return null; } // Geen extra markers
-      }).addTo(map);
-      
-      // Luister naar route berekening events
-      routeControl.on('routesfound', function(e) {
-        const routes = e.routes;
-        let totalDistance = 0;
-        let totalTime = 0;
-        let segments = [];
-        
-        // Verwijder de routing control (we willen alleen de lijn)
-        map.removeControl(routeControl);
-        routeControl = null;
-        
-        // Teken de route lijn
-        if (routeLine) {
-          map.removeLayer(routeLine);
+
+      // Haal de route op van TomTom
+      getTomTomRoute(sortedAfspraken)
+        .then(routeData => {
+          if (!routeData || !routeData.routes || routeData.routes.length === 0) {
+            showError("Geen route gevonden met TomTom.");
+            fallbackTravelInfo(sortedAfspraken);
+            return;
+          }
+
+          const route = routeData.routes[0];
+          const totalDistance = route.summary.lengthInMeters / 1000;
+          const totalTime = route.summary.travelTimeInSeconds / 60;
+          const segments = [];
+
+          // Decode de route punten
+          const routeCoordinates = decodePolyline(route.legs[0].points);
+
+          // Teken de route lijn met pulserend blauw effect
+          routeLine = L.polyline(routeCoordinates, {
+            className: 'route-line' // Gebruik de class voor de pulserende lijn
+          }).addTo(map);
+
+          // Bereken segmenten
+          for (let i = 0; i < sortedAfspraken.length - 1; i++) {
+            const from = sortedAfspraken[i];
+            const to = sortedAfspraken[i + 1];
+
+            // Bereken de afstand en tijd (kan complexer zijn met TomTom, vereenvoudigd hier)
+            const distance = getAfstand(from.lat, from.lon, to.lat, to.lon);
+            const estimatedTime = Math.round(distance * 1.5); // Ruwe schatting
+
+            segments.push({
+              from: from.adres,
+              to: to.adres,
+              distance: distance.toFixed(1),
+              time: estimatedTime,
+              fromTime: from.tijd,
+              toTime: to.tijd
+            });
+          }
+
+          // Toon live tijd indicator als verkeersinformatie aan staat
+          const liveTimeIndicator = liveTrafficEnabled ?
+            `<span class="live-time-indicator"><i class="fas fa-bolt"></i>Live verkeer</span>` : '';
+
+          // Toon travel info
+          travelDetails.innerHTML = segments.map(segment => `
+            <div class="travel-segment">
+              <div><strong><i class="fas fa-map-marker-alt"></i> Van:</strong> ${segment.from} (${segment.fromTime})</div>
+              <div><strong><i class="fas fa-map-marker-alt"></i> Naar:</strong> ${segment.to} (${segment.toTime})</div>
+              <div><strong><i class="fas fa-route"></i> Afstand:</strong> ${segment.distance} km</div>
+              <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min ${liveTimeIndicator}</div>
+            </div>
+          `).join('') + `
+            <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
+              <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
+              <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime / 60).toFixed(1)} uur) ${liveTimeIndicator}</div>
+            </div>
+          `;
+
+          travelInfo.style.display = "block";
+        })
+        .catch(error => {
+          console.error('TomTom error:', error);
+          showError('Fout bij ophalen route van TomTom. Toon geschatte afstanden.');
+          fallbackTravelInfo(sortedAfspraken);
+        });
+    }
+
+    async function getTomTomRoute(afspraken) {
+      const waypoints = afspraken.map(a => `${a.lon},${a.lat}`).join(':');
+      const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=${trafficAPIKey}&travelMode=truck&vehicleCommercial=true&vehicleWeight=7500`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`TomTom API error! status: ${response.status}`);
         }
-        
-        routeLine = L.polyline(routes[0].coordinates, {
-          color: '#FFD700',
-          weight: 4,
-          opacity: 0.8
-        }).addTo(map);
-        
-        // Voeg decorator toe voor gestippeld effect
-        routeDecorator = L.polylineDecorator(routeLine, {
-          patterns: [
-            {
-              offset: 0,
-              repeat: 15,
-              symbol: L.Symbol.dash({
-                pixelSize: 10,
-                pathOptions: {
-                  color: '#FFD700',
-                  weight: 4,
-                  opacity: 0.8
-                }
-              })
-            }
-          ]
-        }).addTo(map);
-        
-        // Bereken totale afstand en tijd
-        totalDistance = routes[0].summary.totalDistance / 1000; // km
-        totalTime = routes[0].summary.totalTime / 60; // minuten
-        
-        // Bereken segmenten tussen waypoints
-        for (let i = 0; i < sortedAfspraken.length - 1; i++) {
-          const from = sortedAfspraken[i];
-          const to = sortedAfspraken[i + 1];
-          
-          // Zoek het bijbehorende route segment
-          const segment = routes[0].instructions.find(inst => 
-            inst.waypointIndex === i
-          );
-          
-          const segmentTime = segment ? segment.time / 60 : 0; // minuten
-          const segmentDistance = segment ? segment.distance / 1000 : 0; // km
-          
-          segments.push({
-            from: from.adres,
-            to: to.adres,
-            distance: segmentDistance.toFixed(1),
-            time: Math.round(segmentTime),
-            fromTime: from.tijd,
-            toTime: to.tijd
-          });
-        }
-        
-        // Toon live tijd indicator als verkeersinformatie aan staat
-        const liveTimeIndicator = liveTrafficEnabled ? 
-          `<span class="live-time-indicator"><i class="fas fa-bolt"></i>Live verkeer</span>` : '';
-        
-        // Toon travel info
-        travelDetails.innerHTML = segments.map(segment => `
-          <div class="travel-segment">
-            <div><strong><i class="fas fa-map-marker-alt"></i> Van:</strong> ${segment.from} (${segment.fromTime})</div>
-            <div><strong><i class="fas fa-map-marker-alt"></i> Naar:</strong> ${segment.to} (${segment.toTime})</div>
-            <div><strong><i class="fas fa-route"></i> Afstand:</strong> ${segment.distance} km</div>
-            <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min ${liveTimeIndicator}</div>
-          </div>
-        `).join('') + `
-          <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
-            <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
-            <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime / 60).toFixed(1)} uur) ${liveTimeIndicator}</div>
-          </div>
-        `;
-        
-        travelInfo.style.display = "block";
-      });
-      
-      routeControl.on('routingerror', function(e) {
-        console.error('Routing error:', e.error);
-        showError('Kon route niet berekenen. Toon geschatte afstanden.');
-        
-        // Fallback naar eenvoudige afstandsberekening
-        fallbackTravelInfo(sortedAfspraken);
-      });
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching TomTom route:", error);
+        throw error;
+      }
+    }
+
+    // Polyline decoder functie (TomTom gebruikt polyline encoding)
+    function decodePolyline(encoded) {
+      let points = [];
+      let index = 0, len = encoded.length;
+      let lat = 0, lng = 0;
+
+      while (index < len) {
+        let b, shift = 0, result = 0;
+        do {
+          b = encoded.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+          b = encoded.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        points.push([lat / 1E5, lng / 1E5]);
+      }
+      return points;
     }
 
     function fallbackTravelInfo(sortedAfspraken) {
       const travelInfo = document.getElementById("travel-info");
       const travelDetails = document.getElementById("travel-details");
-      
+
       let totalDistance = 0;
       let totalTime = 0;
       let segments = [];
-      
-      // Teken eenvoudige lijn tussen punten als fallback
-      const latlngs = sortedAfspraken.map(a => [a.lat, a.lon]);
-      if (routeLine) {
-        map.removeLayer(routeLine);
-      }
-      routeLine = L.polyline(latlngs, {
-        color: '#FFD700',
-        weight: 4,
-        opacity: 0.8,
-        dashArray: '10,5'
-      }).addTo(map);
-      
+
+      // Verwijder de bestaande route line
+      removeRoute();
+
       for (let i = 0; i < sortedAfspraken.length - 1; i++) {
         const from = sortedAfspraken[i];
         const to = sortedAfspraken[i + 1];
-        
+
         const distance = getAfstand(from.lat, from.lon, to.lat, to.lon);
         const estimatedTime = Math.round(distance * 1.5); // Ruwe schatting: 1.5 min per km
-        
+
         totalDistance += distance;
         totalTime += estimatedTime;
-        
+
         segments.push({
           from: from.adres,
           to: to.adres,
@@ -1294,7 +1216,7 @@
           toTime: to.tijd
         });
       }
-      
+
       // Toon travel info
       travelDetails.innerHTML = segments.map(segment => `
         <div class="travel-segment">
@@ -1306,17 +1228,34 @@
       `).join('') + `
         <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
           <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
-          <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime/60).toFixed(1)} uur)</div>
+          <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime / 60).toFixed(1)} uur)</div>
           <div style="color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Let op: geschatte tijden gebaseerd op vogelvlucht afstand</div>
         </div>
       `;
-      
+
       travelInfo.style.display = "block";
+    }
+
+    function getAfstand(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Radius van de aarde in km
+      const dLat = deg2rad(lat2 - lat1);
+      const dLon = deg2rad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const d = R * c; // Afstand in km
+      return d;
+    }
+
+    function deg2rad(deg) {
+      return deg * (Math.PI / 180)
     }
 
     function handleSearch() {
       const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
-      
+
       // Clear previous search results
       searchResults.forEach(marker => {
         const element = marker.getElement();
@@ -1325,14 +1264,14 @@
         }
       });
       searchResults = [];
-      
+
       if (!searchTerm) return;
-      
+
       // Zoek in alle markers
       allMarkers.forEach(marker => {
         const afspraak = marker.afspraakData;
         const searchableText = `${afspraak.adres} ${afspraak.operators.join(' ')} ${afspraak.status}`.toLowerCase();
-        
+
         if (searchableText.includes(searchTerm)) {
           const element = marker.getElement();
           if (element) {
@@ -1341,7 +1280,7 @@
           searchResults.push(marker);
         }
       });
-      
+
       // Zoom naar zoekresultaten
       if (searchResults.length > 0) {
         if (searchResults.length === 1) {
