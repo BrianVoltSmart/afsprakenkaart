@@ -7,6 +7,9 @@
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   <!-- Font Awesome voor betere iconen -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
@@ -229,12 +232,18 @@
       border-radius: 20px;
       transition: all 0.3s ease;
       backdrop-filter: blur(5px);
+      cursor: pointer;
     }
 
     .legend-item:hover {
       background: rgba(255, 255, 255, 0.1);
       transform: translateY(-2px);
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .legend-item.active {
+      background: rgba(255, 215, 0, 0.2);
+      border: 1px solid #FFD700;
     }
 
     .legend-icon {
@@ -404,6 +413,65 @@
       opacity: 0.5;
       filter: grayscale(50%);
     }
+
+    /* Routing machine styling */
+    .leaflet-routing-container {
+      background: rgba(30, 30, 46, 0.9);
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .leaflet-routing-alt {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .leaflet-routing-alt table {
+      color: white;
+      width: 100%;
+    }
+
+    .leaflet-routing-alt table tr:hover {
+      background: rgba(255, 215, 0, 0.1);
+    }
+
+    .leaflet-routing-alt table tr:nth-child(odd) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .leaflet-routing-alt table tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .leaflet-routing-geocoders input {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .leaflet-routing-geocoders button {
+      background: rgba(255, 215, 0, 0.7);
+      color: #333;
+    }
+
+    .leaflet-routing-geocoders button:hover {
+      background: rgba(255, 215, 0, 0.9);
+    }
+
+    .leaflet-routing-error {
+      color: #ff6b6b;
+    }
+
+    .leaflet-bar a {
+      background-color: rgba(30, 30, 46, 0.9);
+      color: white;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .leaflet-bar a:hover {
+      background-color: rgba(45, 45, 58, 0.9);
+    }
   </style>
 </head>
 <body>
@@ -461,9 +529,10 @@
     let afsprakenData = [];
     let selectedMarkers = [];
     let selectedAfspraken = [];
-    let routePolylines = [];
+    let routeControl = null;
     let markerCluster = new Map();
     let searchResults = [];
+    let activeLegendFilter = null;
 
     // Performance optimalisatie: debounce functie
     function debounce(func, wait) {
@@ -702,6 +771,23 @@
         const item = document.createElement("div");
         item.className = "legend-item";
         item.innerHTML = `<span class="legend-icon">${emoji}</span> ${naam}`;
+        item.dataset.operator = naam;
+        
+        item.addEventListener("click", () => {
+          // Toggle active state
+          if (activeLegendFilter === naam) {
+            item.classList.remove("active");
+            activeLegendFilter = null;
+          } else {
+            // Remove active state from all items
+            document.querySelectorAll(".legend-item").forEach(el => el.classList.remove("active"));
+            item.classList.add("active");
+            activeLegendFilter = naam;
+          }
+          
+          updateMarkers();
+        });
+        
         legend.appendChild(item);
       }
       
@@ -740,7 +826,8 @@
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
         const pastMatch = showPast || !isAfspraakInPast(a);
-        return datumMatch && operatorMatch && pastMatch;
+        const legendMatch = !activeLegendFilter || a.operators.includes(activeLegendFilter);
+        return datumMatch && operatorMatch && pastMatch && legendMatch;
       });
       
       if (filteredData.length === 0) {
@@ -808,6 +895,11 @@
         const group = new L.featureGroup(allMarkers);
         map.fitBounds(group.getBounds().pad(0.1));
       }
+      
+      // Update reisinfo als er geselecteerde markers waren
+      if (selectedPositions.length > 0) {
+        updateTravelInfo();
+      }
     }
 
     function toggleMarkerSelection(marker) {
@@ -829,6 +921,9 @@
       const element = marker.getElement();
       if (element) {
         element.classList.add('selected-marker');
+        // Behoud de emoji door deze opnieuw toe te voegen
+        const emoji = operatorEmoji[marker.afspraakData.operators[0]] || "📍";
+        element.innerHTML = `<div class="emoji-div-icon">${emoji}</div>`;
       }
     }
 
@@ -841,6 +936,10 @@
         const element = marker.getElement();
         if (element) {
           element.classList.remove('selected-marker');
+          // Behoud de emoji door deze opnieuw toe te voegen
+          const emoji = operatorEmoji[marker.afspraakData.operators[0]] || "📍";
+          const isPast = isAfspraakInPast(marker.afspraakData);
+          element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
         }
       }
     }
@@ -850,15 +949,21 @@
         const element = marker.getElement();
         if (element) {
           element.classList.remove('selected-marker');
+          // Behoud de emoji door deze opnieuw toe te voegen
+          const emoji = operatorEmoji[marker.afspraakData.operators[0]] || "📍";
+          const isPast = isAfspraakInPast(marker.afspraakData);
+          element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
         }
       });
       
       selectedMarkers = [];
       selectedAfspraken = [];
       
-      // Verwijder route lijnen
-      routePolylines.forEach(polyline => map.removeLayer(polyline));
-      routePolylines = [];
+      // Verwijder route control
+      if (routeControl) {
+        map.removeControl(routeControl);
+        routeControl = null;
+      }
       
       document.getElementById("travel-info").style.display = "none";
     }
@@ -869,8 +974,10 @@
       
       if (selectedAfspraken.length < 2) {
         travelInfo.style.display = "none";
-        routePolylines.forEach(polyline => map.removeLayer(polyline));
-        routePolylines = [];
+        if (routeControl) {
+          map.removeControl(routeControl);
+          routeControl = null;
+        }
         return;
       }
       
@@ -881,13 +988,110 @@
         return dateA - dateB;
       });
       
+      // Verwijder bestaande route control
+      if (routeControl) {
+        map.removeControl(routeControl);
+      }
+      
+      // Maak waypoints voor de route
+      const waypoints = sortedAfspraken.map(afspraak => 
+        L.latLng(afspraak.lat, afspraak.lon)
+      );
+      
+      // Voeg routing control toe
+      routeControl = L.Routing.control({
+        waypoints: waypoints,
+        routeWhileDragging: false,
+        show: false, // Verberg de standaard route instructies
+        fitSelectedRoutes: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        lineOptions: {
+          styles: [{color: '#FFD700', opacity: 0.8, weight: 4, dashArray: '10,5'}],
+          extendToWaypoints: true,
+          missingRouteTolerance: 1
+        },
+        createMarker: function() { return null; } // Geen extra markers
+      }).addTo(map);
+      
+      // Luister naar route berekening events
+      routeControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        let totalDistance = 0;
+        let totalTime = 0;
+        let segments = [];
+        
+        routes[0].coordinates.forEach((coord, i, arr) => {
+          if (i === 0) return;
+          
+          const prevCoord = arr[i-1];
+          const segmentDistance = L.GeometryUtil.length([
+            L.latLng(prevCoord.lat, prevCoord.lng),
+            L.latLng(coord.lat, coord.lng)
+          ]);
+          
+          totalDistance += segmentDistance;
+        });
+        
+        totalTime = routes[0].summary.totalTime;
+        
+        // Bereken segmenten tussen waypoints
+        for (let i = 0; i < sortedAfspraken.length - 1; i++) {
+          const from = sortedAfspraken[i];
+          const to = sortedAfspraken[i + 1];
+          
+          // Zoek het bijbehorende route segment
+          const segment = routes[0].instructions.find(inst => 
+            inst.waypointIndex === i
+          );
+          
+          const segmentTime = segment ? segment.time : 0;
+          const segmentDistance = segment ? segment.distance : 0;
+          
+          segments.push({
+            from: from.adres,
+            to: to.adres,
+            distance: (segmentDistance / 1000).toFixed(1),
+            time: Math.round(segmentTime / 60), // omzetten naar minuten
+            fromTime: from.tijd,
+            toTime: to.tijd
+          });
+        }
+        
+        // Toon travel info
+        travelDetails.innerHTML = segments.map(segment => `
+          <div class="travel-segment">
+            <div><strong><i class="fas fa-map-marker-alt"></i> Van:</strong> ${segment.from} (${segment.fromTime})</div>
+            <div><strong><i class="fas fa-map-marker-alt"></i> Naar:</strong> ${segment.to} (${segment.toTime})</div>
+            <div><strong><i class="fas fa-route"></i> Afstand:</strong> ${segment.distance} km</div>
+            <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min</div>
+          </div>
+        `).join('') + `
+          <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
+            <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${(totalDistance / 1000).toFixed(1)} km</div>
+            <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime / 60)} min (${(totalTime / 3600).toFixed(1)} uur)</div>
+          </div>
+        `;
+        
+        travelInfo.style.display = "block";
+      });
+      
+      routeControl.on('routingerror', function(e) {
+        console.error('Routing error:', e.error);
+        showError('Kon route niet berekenen. Toon geschatte afstanden.');
+        
+        // Fallback naar eenvoudige afstandsberekening
+        fallbackTravelInfo(sortedAfspraken);
+      });
+    }
+
+    function fallbackTravelInfo(sortedAfspraken) {
+      const travelInfo = document.getElementById("travel-info");
+      const travelDetails = document.getElementById("travel-details");
+      
       let totalDistance = 0;
       let totalTime = 0;
       let segments = [];
-      
-      // Verwijder bestaande route lijnen
-      routePolylines.forEach(polyline => map.removeLayer(polyline));
-      routePolylines = [];
       
       for (let i = 0; i < sortedAfspraken.length - 1; i++) {
         const from = sortedAfspraken[i];
@@ -898,17 +1102,6 @@
         
         totalDistance += distance;
         totalTime += estimatedTime;
-        
-        // Teken lijn tussen punten
-        const latlngs = [[from.lat, from.lon], [to.lat, to.lon]];
-        const polyline = L.polyline(latlngs, {
-          color: '#FFD700',
-          weight: 4,
-          opacity: 0.8,
-          dashArray: '10, 5'
-        }).addTo(map);
-        
-        routePolylines.push(polyline);
         
         segments.push({
           from: from.adres,
@@ -932,6 +1125,7 @@
         <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
           <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
           <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime/60).toFixed(1)} uur)</div>
+          <div style="color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Let op: geschatte tijden gebaseerd op vogelvlucht afstand</div>
         </div>
       `;
       
