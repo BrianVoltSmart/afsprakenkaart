@@ -447,13 +447,20 @@
     }
 
     /* Route line styling */
-    .route-line {
-      stroke: #007bff; /* Blauwe kleur voor de lijn */
-      stroke-width: 4;
-      stroke-dasharray: 20, 10; /* Lengte van de streep, lengte van de ruimte */
-      animation: dash 2s linear infinite; /* Snelheid van de animatie */
-      opacity: 0.8;
-    }
+  .route-line {
+  stroke: #007bff; /* Blauwe kleur voor de lijn */
+  stroke-width: 4;
+  stroke-dasharray: 20, 10; /* Lengte van de streep, lengte van de ruimte */
+  stroke-dashoffset: 0; /* Startwaarde voor de offset */
+  animation: dash 2s linear infinite; /* Snelheid van de animatie */
+  opacity: 0.8;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -30; /* Schuift de strepen op voor een pulserend effect */
+  }
+}
 
     @keyframes dash {
       to {
@@ -630,13 +637,13 @@
     function toggleTrafficLayer() {
       if (!trafficLayer) {
         // Controleer of de API key is ingevuld
-        if (!trafficAPIKey || trafficAPIKey === "YOUR_TOMTOM_API_KEY") {
+        if (!trafficAPIKey || trafficAPIKey === "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u") {
           showError("Voer een geldige TomTom API key in");
           return;
         }
 
         // TomTom Traffic Layer met uitgebreide debug-informatie
-        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${trafficAPIKey}`, {
+        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u}`, {
           maxZoom: 18,
           className: 'tt-traffic-layer',
           detectRetina: true,
