@@ -399,6 +399,11 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.7; }
     }
+
+    .past-appointment {
+      opacity: 0.5;
+      filter: grayscale(50%);
+    }
   </style>
 </head>
 <body>
@@ -426,6 +431,9 @@
     <select id="operatorSelect">
       <option value="">-- Iedereen --</option>
     </select>
+    <label>
+      <input type="checkbox" id="showPastAppointments" checked /> Toon verleden afspraken
+    </label>
     <button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
   </div>
 
@@ -482,6 +490,20 @@
       return R * c;
     }
 
+    // Nieuwe functie om te checken of een afspraak in het verleden is
+    function isAfspraakInPast(afspraak) {
+      const now = new Date();
+      const afspraakDate = parseDatumEnTijd(afspraak.datum, afspraak.tijd);
+      return afspraakDate < now;
+    }
+
+    // Nieuwe functie om datum en tijd te parsen
+    function parseDatumEnTijd(datumStr, tijdStr) {
+      const [dag, maand, jaar] = datumStr.split("-").map(Number);
+      const [uren, minuten] = tijdStr.split(":").map(Number);
+      return new Date(jaar, maand - 1, dag, uren, minuten || 0);
+    }
+
     async function initMap() {
       showLoading(true);
       
@@ -514,6 +536,12 @@
         document.getElementById("searchInput").addEventListener("input", 
           debounce(handleSearch, 300)
         );
+
+        // Event listener voor checkbox
+        document.getElementById("showPastAppointments").addEventListener("change", () => {
+          updateMarkers();
+          updateCounter();
+        });
 
         showLoading(false);
       } catch (error) {
@@ -594,11 +622,13 @@
     function updateCounter() {
       const selectedDatum = document.getElementById("datumSelect").value;
       const selectedOperator = document.getElementById("operatorSelect").value;
+      const showPast = document.getElementById("showPastAppointments").checked;
       
       const filteredData = afsprakenData.filter((a) => {
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
-        return datumMatch && operatorMatch;
+        const pastMatch = showPast || !isAfspraakInPast(a);
+        return datumMatch && operatorMatch && pastMatch;
       });
 
       const todayString = getTodayString();
@@ -682,9 +712,16 @@
     }
 
     function updateMarkers() {
+      // Bewaar geselecteerde markers data voordat we ze verwijderen
+      const selectedPositions = selectedMarkers.map(marker => ({
+        lat: marker.getLatLng().lat,
+        lng: marker.getLatLng().lng
+      }));
+      
       // Verwijder alle bestaande markers
       allMarkers.forEach(marker => map.removeLayer(marker));
       allMarkers = [];
+      selectedMarkers = [];
       
       // Clear search results styling
       searchResults.forEach(marker => {
@@ -697,11 +734,13 @@
       
       const selectedDatum = document.getElementById("datumSelect").value;
       const selectedOperator = document.getElementById("operatorSelect").value;
+      const showPast = document.getElementById("showPastAppointments").checked;
       
       const filteredData = afsprakenData.filter((a) => {
         const datumMatch = !selectedDatum || a.datum === selectedDatum;
         const operatorMatch = !selectedOperator || a.operators.includes(selectedOperator);
-        return datumMatch && operatorMatch;
+        const pastMatch = showPast || !isAfspraakInPast(a);
+        return datumMatch && operatorMatch && pastMatch;
       });
       
       if (filteredData.length === 0) {
@@ -712,9 +751,10 @@
       filteredData.forEach((afspraak) => {
         const primaryOperator = afspraak.operators[0];
         const emoji = operatorEmoji[primaryOperator] || "📍";
+        const isPast = isAfspraakInPast(afspraak);
         
         const icon = L.divIcon({
-          html: `<div class="emoji-div-icon">${emoji}</div>`,
+          html: `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`,
           iconSize: [30, 30],
           className: 'custom-div-icon'
         });
@@ -738,23 +778,164 @@
               <p style="margin: 5px 0;">
                 <i class="fas fa-info-circle"></i> <strong>Status:</strong> ${afspraak.status}
               </p>
+              ${isPast ? '<p style="margin: 5px 0; color: #ff9800;"><i class="fas fa-history"></i> <strong>Verleden afspraak</strong></p>' : ''}
               <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
                 <small style="color: #ccc;">
-                  <i class="fas fa-mouse-pointer"></i> Klik op de marker om toe te voegen aan route
+                  <i class="fas fa-mouse-pointer"></i> Klik op de marker om toe te voegen aan selectie
                 </small>
               </div>
             </div>
           `);
         
-        marker.on('click', () => onMarkerClick(afspraak, marker));
+        marker.afspraakData = afspraak;
+        marker.on('click', () => toggleMarkerSelection(marker));
+        
+        // Herstel selectie als deze marker eerder geselecteerd was
+        const wasSelected = selectedPositions.some(pos => 
+          Math.abs(pos.lat - afspraak.lat) < 0.00001 && 
+          Math.abs(pos.lng - afspraak.lon) < 0.00001
+        );
+        
+        if (wasSelected) {
+          selectMarker(marker);
+        }
+        
         allMarkers.push(marker);
       });
       
-      // Auto-fit de kaart naar alle markers
+      // Auto-fit naar alle markers
       if (allMarkers.length > 0) {
         const group = new L.featureGroup(allMarkers);
         map.fitBounds(group.getBounds().pad(0.1));
       }
+    }
+
+    function toggleMarkerSelection(marker) {
+      const index = selectedMarkers.indexOf(marker);
+      if (index > -1) {
+        deselectMarker(marker);
+      } else {
+        selectMarker(marker);
+      }
+      updateTravelInfo();
+    }
+
+    function selectMarker(marker) {
+      if (selectedMarkers.includes(marker)) return;
+      
+      selectedMarkers.push(marker);
+      selectedAfspraken.push(marker.afspraakData);
+      
+      const element = marker.getElement();
+      if (element) {
+        element.classList.add('selected-marker');
+      }
+    }
+
+    function deselectMarker(marker) {
+      const index = selectedMarkers.indexOf(marker);
+      if (index > -1) {
+        selectedMarkers.splice(index, 1);
+        selectedAfspraken.splice(index, 1);
+        
+        const element = marker.getElement();
+        if (element) {
+          element.classList.remove('selected-marker');
+        }
+      }
+    }
+
+    function clearSelection() {
+      selectedMarkers.forEach(marker => {
+        const element = marker.getElement();
+        if (element) {
+          element.classList.remove('selected-marker');
+        }
+      });
+      
+      selectedMarkers = [];
+      selectedAfspraken = [];
+      
+      // Verwijder route lijnen
+      routePolylines.forEach(polyline => map.removeLayer(polyline));
+      routePolylines = [];
+      
+      document.getElementById("travel-info").style.display = "none";
+    }
+
+    function updateTravelInfo() {
+      const travelInfo = document.getElementById("travel-info");
+      const travelDetails = document.getElementById("travel-details");
+      
+      if (selectedAfspraken.length < 2) {
+        travelInfo.style.display = "none";
+        routePolylines.forEach(polyline => map.removeLayer(polyline));
+        routePolylines = [];
+        return;
+      }
+      
+      // Sorteer afspraken op datum en tijd
+      const sortedAfspraken = [...selectedAfspraken].sort((a, b) => {
+        const dateA = parseDatumEnTijd(a.datum, a.tijd);
+        const dateB = parseDatumEnTijd(b.datum, b.tijd);
+        return dateA - dateB;
+      });
+      
+      let totalDistance = 0;
+      let totalTime = 0;
+      let segments = [];
+      
+      // Verwijder bestaande route lijnen
+      routePolylines.forEach(polyline => map.removeLayer(polyline));
+      routePolylines = [];
+      
+      for (let i = 0; i < sortedAfspraken.length - 1; i++) {
+        const from = sortedAfspraken[i];
+        const to = sortedAfspraken[i + 1];
+        
+        const distance = getAfstand(from.lat, from.lon, to.lat, to.lon);
+        const estimatedTime = Math.round(distance * 1.5); // Ruwe schatting: 1.5 min per km
+        
+        totalDistance += distance;
+        totalTime += estimatedTime;
+        
+        // Teken lijn tussen punten
+        const latlngs = [[from.lat, from.lon], [to.lat, to.lon]];
+        const polyline = L.polyline(latlngs, {
+          color: '#FFD700',
+          weight: 4,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }).addTo(map);
+        
+        routePolylines.push(polyline);
+        
+        segments.push({
+          from: from.adres,
+          to: to.adres,
+          distance: distance.toFixed(1),
+          time: estimatedTime,
+          fromTime: from.tijd,
+          toTime: to.tijd
+        });
+      }
+      
+      // Toon travel info
+      travelDetails.innerHTML = segments.map(segment => `
+        <div class="travel-segment">
+          <div><strong><i class="fas fa-map-marker-alt"></i> Van:</strong> ${segment.from} (${segment.fromTime})</div>
+          <div><strong><i class="fas fa-map-marker-alt"></i> Naar:</strong> ${segment.to} (${segment.toTime})</div>
+          <div><strong><i class="fas fa-route"></i> Afstand:</strong> ${segment.distance} km</div>
+          <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min</div>
+        </div>
+      `).join('') + `
+        <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
+          <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
+          <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime/60).toFixed(1)} uur)</div>
+        </div>
+      `;
+      
+      travelInfo.style.display = "block";
     }
 
     function handleSearch() {
@@ -771,219 +952,32 @@
       
       if (!searchTerm) return;
       
-      const matches = allMarkers.filter(marker => {
-        const afspraak = afsprakenData.find(a => 
-          a.lat === marker.getLatLng().lat && 
-          a.lon === marker.getLatLng().lng
-        );
-        if (!afspraak) return false;
+      // Zoek in alle markers
+      allMarkers.forEach(marker => {
+        const afspraak = marker.afspraakData;
+        const searchableText = `${afspraak.adres} ${afspraak.operators.join(' ')} ${afspraak.status}`.toLowerCase();
         
-        return afspraak.adres.toLowerCase().includes(searchTerm) ||
-               afspraak.operators.some(op => op.toLowerCase().includes(searchTerm));
-      });
-      
-      if (matches.length === 0) {
-        showError('Geen resultaten gevonden voor je zoekopdracht.');
-        return;
-      }
-      
-      // Highlight search results
-      matches.forEach(marker => {
-        const element = marker.getElement();
-        if (element) {
-          element.classList.add('search-result');
+        if (searchableText.includes(searchTerm)) {
+          const element = marker.getElement();
+          if (element) {
+            element.classList.add('search-result');
+          }
+          searchResults.push(marker);
         }
-        searchResults.push(marker);
       });
       
-    // Focus on search results
-      if (matches.length > 0) {
-        const group = new L.featureGroup(matches);
-        map.fitBounds(group.getBounds().pad(0.1));
+      // Zoom naar zoekresultaten
+      if (searchResults.length > 0) {
+        if (searchResults.length === 1) {
+          map.setView([searchResults[0].getLatLng().lat, searchResults[0].getLatLng().lng], 15);
+        } else {
+          const group = new L.featureGroup(searchResults);
+          map.fitBounds(group.getBounds().pad(0.1));
+        }
       }
     }
 
-    function onMarkerClick(afspraak, marker) {
-      const isSelected = selectedMarkers.includes(marker);
-      
-      if (isSelected) {
-        // Deselect
-        selectedMarkers = selectedMarkers.filter(m => m !== marker);
-        selectedAfspraken = selectedAfspraken.filter(a => a !== afspraak);
-        marker.getElement().classList.remove('selected-marker');
-      } else {
-        // Select
-        selectedMarkers.push(marker);
-        selectedAfspraken.push(afspraak);
-        marker.getElement().classList.add('selected-marker');
-      }
-      
-      updateRoutes();
-      updateTravelInfo();
-    }
-
-    function clearSelection() {
-      selectedMarkers.forEach(marker => {
-        marker.getElement().classList.remove('selected-marker');
-      });
-      selectedMarkers = [];
-      selectedAfspraken = [];
-      clearRoutes();
-      document.getElementById('travel-info').style.display = 'none';
-    }
-
- async function updateRoutes() {
-  clearRoutes();
-  
-  if (selectedMarkers.length < 2) return;
-  
-  // Toon loading indicator
-  showLoading(true);
-  
-  try {
-    await updateRoutesWithOSRM();
-  } catch (error) {
-    console.error('Routing error:', error);
-    // Fallback naar rechte lijnen
-    updateRoutesWithStraightLines();
-  } finally {
-    showLoading(false);
-  }
-  
-  // Update travel info na het laden van routes
-  updateTravelInfo();
-}
-
-// OSRM routing - gratis routing service
-async function updateRoutesWithOSRM() {
-  for (let i = 0; i < selectedMarkers.length - 1; i++) {
-    const start = selectedMarkers[i].getLatLng();
-    const end = selectedMarkers[i + 1].getLatLng();
-    
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
-    
-    try {
-      const response = await fetch(osrmUrl);
-      const data = await response.json();
-      
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        
-        const polyline = L.polyline(coordinates, {
-          color: '#FFD700',
-          weight: 4,
-          opacity: 0.8,
-          dashArray: '10, 5'
-        }).addTo(map);
-        
-        routePolylines.push(polyline);
-        
-        // Store echte route data
-        const distance = route.distance / 1000; // Convert to km
-        const duration = route.duration / 60; // Convert to minutes
-        
-        selectedAfspraken[i].routeDistance = distance;
-        selectedAfspraken[i].routeDuration = duration;
-      }
-    } catch (error) {
-      console.error('Route request failed for segment:', error);
-      // Fallback naar rechte lijn voor dit segment
-      const polyline = L.polyline([start, end], {
-        color: '#FFD700',
-        weight: 4,
-        opacity: 0.8,
-        dashArray: '10, 5'
-      }).addTo(map);
-      routePolylines.push(polyline);
-    }
-  }
-}
-
-// Fallback functie voor rechte lijnen
-function updateRoutesWithStraightLines() {
-  for (let i = 0; i < selectedMarkers.length - 1; i++) {
-    const start = selectedMarkers[i].getLatLng();
-    const end = selectedMarkers[i + 1].getLatLng();
-    
-    const polyline = L.polyline([start, end], {
-      color: '#FFD700',
-      weight: 4,
-      opacity: 0.8,
-      dashArray: '10, 5'
-    }).addTo(map);
-    
-    routePolylines.push(polyline);
-  }
-}
-
-function clearRoutes() {
-  // Verwijder alleen de route polylines, niet de markers
-  routePolylines.forEach(polyline => {
-    if (map.hasLayer(polyline)) {
-      map.removeLayer(polyline);
-    }
-  });
-  routePolylines = [];
-  
-  // Reset alleen route data, niet de hele afspraak objecten
-  selectedAfspraken.forEach(afspraak => {
-    if (afspraak.routeDistance !== undefined) delete afspraak.routeDistance;
-    if (afspraak.routeDuration !== undefined) delete afspraak.routeDuration;
-  });
-}
-
-function updateTravelInfo() {
-  const travelInfo = document.getElementById('travel-info');
-  const travelDetails = document.getElementById('travel-details');
-  
-  if (selectedAfspraken.length < 2) {
-    travelInfo.style.display = 'none';
-    return;
-  }
-  
-  travelInfo.style.display = 'block';
-  travelDetails.innerHTML = '';
-  
-  let totalDistance = 0;
-  let totalTime = 0;
-  
-  for (let i = 0; i < selectedAfspraken.length - 1; i++) {
-    const from = selectedAfspraken[i];
-    const to = selectedAfspraken[i + 1];
-    
-    // Gebruik echte route data als beschikbaar, anders bereken met Haversine
-    const distance = from.routeDistance || getAfstand(from.lat, from.lon, to.lat, to.lon);
-    const estimatedTime = from.routeDuration || Math.round(distance * 1.5);
-    
-    totalDistance += distance;
-    totalTime += estimatedTime;
-    
-    const segment = document.createElement('div');
-    segment.className = 'travel-segment';
-    segment.innerHTML = `
-      <div><i class="fas fa-route"></i> <strong>Van:</strong> ${from.adres} (${from.tijd})</div>
-      <div><i class="fas fa-arrow-down"></i> <strong>Naar:</strong> ${to.adres} (${to.tijd})</div>
-      <div><i class="fas fa-road"></i> <strong>Afstand:</strong> ${distance.toFixed(1)} km ${from.routeDistance ? '(echte route)' : '(geschat)'}</div>
-      <div><i class="fas fa-clock"></i> <strong>Reistijd:</strong> ${Math.round(estimatedTime)} min ${from.routeDuration ? '(via wegen)' : '(geschat)'}</div>
-    `;
-    travelDetails.appendChild(segment);
-  }
-  
-  // Totaal overzicht
-  const totalSegment = document.createElement('div');
-  totalSegment.className = 'travel-segment';
-  totalSegment.style.background = 'rgba(255, 215, 0, 0.2)';
-  totalSegment.style.borderLeft = '4px solid #FFD700';
-  totalSegment.innerHTML = `
-    <div><strong><i class="fas fa-calculator"></i> Totaal overzicht:</strong></div>
-    <div><i class="fas fa-road"></i> <strong>Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
-    <div><i class="fas fa-clock"></i> <strong>Totale reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime/60).toFixed(1)} uur)</div>
-    <div><i class="fas fa-map-marker-alt"></i> <strong>Aantal stops:</strong> ${selectedAfspraken.length}</div>
-  `;
-  travelDetails.appendChild(totalSegment);
-}
-    // Initialiseer de applicatie
+    // Initialiseer de app
     document.addEventListener('DOMContentLoaded', initMap);
   </script>
 </body>
