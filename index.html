@@ -914,7 +914,6 @@ function updateRoutesWithStraightLines() {
     routePolylines.push(polyline);
   }
 }
-    }
 
 function clearRoutes() {
   routePolylines.forEach(polyline => map.removeLayer(polyline));
@@ -926,7 +925,8 @@ function clearRoutes() {
     delete afspraak.routeDuration;
   });
 }
-    function updateTravelInfo() {
+
+function updateTravelInfo() {
   const travelInfo = document.getElementById('travel-info');
   const travelDetails = document.getElementById('travel-details');
   
@@ -976,48 +976,6 @@ function clearRoutes() {
   `;
   travelDetails.appendChild(totalSegment);
 }
-      
-      travelInfo.style.display = 'block';
-      travelDetails.innerHTML = '';
-      
-      let totalDistance = 0;
-      let totalTime = 0;
-      
-      for (let i = 0; i < selectedAfspraken.length - 1; i++) {
-        const from = selectedAfspraken[i];
-        const to = selectedAfspraken[i + 1];
-        
-        const distance = getAfstand(from.lat, from.lon, to.lat, to.lon);
-        const estimatedTime = Math.round(distance * 1.5); // Geschatte reistijd in minuten
-        
-        totalDistance += distance;
-        totalTime += estimatedTime;
-        
-        const segment = document.createElement('div');
-        segment.className = 'travel-segment';
-        segment.innerHTML = `
-          <div><i class="fas fa-route"></i> <strong>Van:</strong> ${from.adres} (${from.tijd})</div>
-          <div><i class="fas fa-arrow-down"></i> <strong>Naar:</strong> ${to.adres} (${to.tijd})</div>
-          <div><i class="fas fa-road"></i> <strong>Afstand:</strong> ${distance.toFixed(1)} km</div>
-          <div><i class="fas fa-clock"></i> <strong>Geschatte reistijd:</strong> ${estimatedTime} min</div>
-        `;
-        travelDetails.appendChild(segment);
-      }
-      
-      // Totaal overzicht
-      const totalSegment = document.createElement('div');
-      totalSegment.className = 'travel-segment';
-      totalSegment.style.background = 'rgba(255, 215, 0, 0.2)';
-      totalSegment.style.borderLeft = '4px solid #FFD700';
-      totalSegment.innerHTML = `
-        <div><strong><i class="fas fa-calculator"></i> Totaal overzicht:</strong></div>
-        <div><i class="fas fa-road"></i> <strong>Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
-        <div><i class="fas fa-clock"></i> <strong>Totale reistijd:</strong> ${Math.round(totalTime)} min (${Math.round(totalTime/60)} uur)</div>
-        <div><i class="fas fa-map-marker-alt"></i> <strong>Aantal stops:</strong> ${selectedAfspraken.length}</div>
-      `;
-      travelDetails.appendChild(totalSegment);
-    }
-
     // Initialiseer de applicatie
     document.addEventListener('DOMContentLoaded', initMap);
   </script>
