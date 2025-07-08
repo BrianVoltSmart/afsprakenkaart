@@ -833,7 +833,7 @@
       document.getElementById('travel-info').style.display = 'none';
     }
 
-    async function updateRoutes() {
+ async function updateRoutes() {
   clearRoutes();
   
   if (selectedMarkers.length < 2) return;
@@ -850,6 +850,9 @@
   } finally {
     showLoading(false);
   }
+  
+  // Update travel info na het laden van routes
+  updateTravelInfo();
 }
 
 // OSRM routing - gratis routing service
@@ -916,13 +919,18 @@ function updateRoutesWithStraightLines() {
 }
 
 function clearRoutes() {
-  routePolylines.forEach(polyline => map.removeLayer(polyline));
+  // Verwijder alleen de route polylines, niet de markers
+  routePolylines.forEach(polyline => {
+    if (map.hasLayer(polyline)) {
+      map.removeLayer(polyline);
+    }
+  });
   routePolylines = [];
   
-  // Reset route data
+  // Reset alleen route data, niet de hele afspraak objecten
   selectedAfspraken.forEach(afspraak => {
-    delete afspraak.routeDistance;
-    delete afspraak.routeDuration;
+    if (afspraak.routeDistance !== undefined) delete afspraak.routeDistance;
+    if (afspraak.routeDuration !== undefined) delete afspraak.routeDuration;
   });
 }
 
