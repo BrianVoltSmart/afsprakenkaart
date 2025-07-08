@@ -109,6 +109,7 @@
       padding: 10px 20px;
       background: #1e1e1e;
       font-size: 0.9rem;
+      display: none;
     }
     #travel-info {
       padding: 10px 20px;
@@ -181,6 +182,8 @@
     let afsprakenData = [];
     let selectedMarkers = [];
     let selectedAfspraken = [];
+    let routeLines = [];
+    let routePolylines = [];
 
     async function initMap() {
       map = L.map("map").setView([52.1, 5.1], 7);
@@ -327,10 +330,44 @@
       });
       selectedAfspraken = [];
       selectedMarkers = [];
+      
+      // Clear route lines
+      routePolylines.forEach(polyline => map.removeLayer(polyline));
+      routePolylines = [];
+      
       updateTravelInfo();
     }
 
-    function updateTravelInfo() {
+    async function getAccurateRouteData(lat1, lon1, lat2, lon2) {
+      try {
+        const response = await fetch(`https://api.openrouteservice.org/v2/directions/driving-car?api_key=5b3ce3597851110001cf6248b6e4c4e24eb44ff8b7e7ecc2c4a5f5eb&start=${lon1},${lat1}&end=${lon2},${lat2}`);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const route = data.features[0];
+          const duration = Math.round(route.properties.summary.duration / 60); // Convert to minutes
+          const distance = (route.properties.summary.distance / 1000).toFixed(1); // Convert to km
+          const geometry = route.geometry.coordinates;
+          
+          return {
+            duration: duration,
+            distance: parseFloat(distance),
+            geometry: geometry
+          };
+        }
+      } catch (error) {
+        console.warn('OpenRouteService API error, using fallback calculation:', error);
+      }
+      
+      // Fallback to straight-line calculation
+      const distance = getAfstand(lat1, lon1, lat2, lon2);
+      const duration = Math.round(distance / 50 * 60);
+      return {
+        duration: duration,
+        distance: distance,
+        geometry: null
+      };
+    }
       const travelInfo = document.getElementById("travel-info");
       const travelDetails = document.getElementById("travel-details");
       
@@ -387,15 +424,18 @@
     function updateMarkers() {
       const datum = document.getElementById("datumSelect").value.trim();
       const operator = document.getElementById("operatorSelect").value.trim();
-      const output = document.getElementById("output");
-      output.innerHTML = "";
 
       allMarkers.forEach((marker) => map.removeLayer(marker));
       allMarkers = [];
       
-      // Clear selections when filters change
+      // Clear selections and routes when filters change
+      selectedMarkers.forEach(marker => {
+        if (marker.getElement) marker.getElement().classList.remove('selected-marker');
+      });
       selectedAfspraken = [];
       selectedMarkers = [];
+      routePolylines.forEach(polyline => map.removeLayer(polyline));
+      routePolylines = [];
       updateTravelInfo();
 
       const gefilterd = afsprakenData.filter((a) => {
@@ -403,44 +443,6 @@
         const operatorMatch = !operator || a.operators.includes(operator);
         return datumMatch && operatorMatch;
       });
-
-      const afsprakenPerOperatorDatum = {};
-      gefilterd.forEach((a) => {
-        a.operators.forEach((op) => {
-          const key = `${a.datum}_${op}`;
-          if (!afsprakenPerOperatorDatum[key]) afsprakenPerOperatorDatum[key] = [];
-          afsprakenPerOperatorDatum[key].push(a);
-        });
-      });
-
-      for (const lijst of Object.values(afsprakenPerOperatorDatum)) {
-        lijst.sort((a, b) => {
-          const [h1, m1] = a.tijd.split(":").map(Number);
-          const [h2, m2] = b.tijd.split(":").map(Number);
-          return h1 * 60 + m1 - (h2 * 60 + m2);
-        });
-
-        if (lijst.length > 1) {
-          let totalMinutes = 0;
-          output.innerHTML += `<strong>${lijst[0].datum} (${lijst[0].operators.join(", ")}):</strong><br>`;
-          for (let i = 0; i < lijst.length; i++) {
-            const a = lijst[i];
-            const tijd = new Date(0, 0, 0, ...a.tijd.split(":").map(Number));
-            const aankomst = new Date(tijd.getTime() + totalMinutes * 60000);
-            const aankomstStr = aankomst.getHours().toString().padStart(2, "0") + ":" + aankomst.getMinutes().toString().padStart(2, "0");
-            output.innerHTML += `• ${a.adres} — aankomst ± <strong>${aankomstStr}</strong><br>`;
-
-            if (i < lijst.length - 1) {
-              const next = lijst[i + 1];
-              const afstand = getAfstand(a.lat, a.lon, next.lat, next.lon);
-              const reistijdMin = Math.round(afstand / 50 * 60);
-              totalMinutes += reistijdMin;
-              output.innerHTML += `→ Reistijd naar volgende: ~${reistijdMin} min (${afstand.toFixed(1)} km)<br>`;
-            }
-          }
-          output.innerHTML += `Totale reistijd: <strong>${totalMinutes} minuten</strong><br><br>`;
-        }
-      }
 
       gefilterd.forEach((a) => {
         const hoofdOperator = a.operators[0];
@@ -456,7 +458,7 @@
         
         const adresZonderPostcode = a.adres.split(" ").filter(w => !/^\d{4}\s?[A-Z]{2}$/i.test(w)).join(" ");
         const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.lat + "," + a.lon)}`;
-        marker.bindPopup(`<strong>${a.operators.join(", ")}</strong><br>${adresZonderPostcode}<br>${a.datum} ${a.tijd}<br>${a.status ? `Status: ${a.status}<br>` : ""}<a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a><br><br><small>💡 Klik op de marker om te selecteren voor reistijd berekening</small>`);
+        marker.bindPopup(`<strong>${a.operators.join(", ")}</strong><br>${adresZonderPostcode}<br>${a.datum} ${a.tijd}<br>${a.status ? `Status: ${a.status}<br>` : ""}<a href="${mapsLink}" target="_blank">📍 Open in Google Maps</a><br><br><small>💡 Klik op de marker om te selecteren voor accurate rijstijd berekening</small>`);
         
         // Add click event for selection
         marker.on('click', () => onMarkerClick(a, marker));
