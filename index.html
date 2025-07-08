@@ -833,17 +833,42 @@
       document.getElementById('travel-info').style.display = 'none';
     }
 
-    function updateRoutes() {
-      clearRoutes();
+    async function updateRoutes() {
+  clearRoutes();
+  
+  if (selectedMarkers.length < 2) return;
+  
+  // Toon loading indicator
+  showLoading(true);
+  
+  try {
+    await updateRoutesWithOSRM();
+  } catch (error) {
+    console.error('Routing error:', error);
+    // Fallback naar rechte lijnen
+    updateRoutesWithStraightLines();
+  } finally {
+    showLoading(false);
+  }
+}
+
+// OSRM routing - gratis routing service
+async function updateRoutesWithOSRM() {
+  for (let i = 0; i < selectedMarkers.length - 1; i++) {
+    const start = selectedMarkers[i].getLatLng();
+    const end = selectedMarkers[i + 1].getLatLng();
+    
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+    
+    try {
+      const response = await fetch(osrmUrl);
+      const data = await response.json();
       
-      if (selectedMarkers.length < 2) return;
-      
-      // Teken lijnen tussen geselecteerde markers
-      for (let i = 0; i < selectedMarkers.length - 1; i++) {
-        const start = selectedMarkers[i].getLatLng();
-        const end = selectedMarkers[i + 1].getLatLng();
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
         
-        const polyline = L.polyline([start, end], {
+        const polyline = L.polyline(coordinates, {
           color: '#FFD700',
           weight: 4,
           opacity: 0.8,
@@ -851,22 +876,106 @@
         }).addTo(map);
         
         routePolylines.push(polyline);
+        
+        // Store echte route data
+        const distance = route.distance / 1000; // Convert to km
+        const duration = route.duration / 60; // Convert to minutes
+        
+        selectedAfspraken[i].routeDistance = distance;
+        selectedAfspraken[i].routeDuration = duration;
       }
+    } catch (error) {
+      console.error('Route request failed for segment:', error);
+      // Fallback naar rechte lijn voor dit segment
+      const polyline = L.polyline([start, end], {
+        color: '#FFD700',
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '10, 5'
+      }).addTo(map);
+      routePolylines.push(polyline);
+    }
+  }
+}
+
+// Fallback functie voor rechte lijnen
+function updateRoutesWithStraightLines() {
+  for (let i = 0; i < selectedMarkers.length - 1; i++) {
+    const start = selectedMarkers[i].getLatLng();
+    const end = selectedMarkers[i + 1].getLatLng();
+    
+    const polyline = L.polyline([start, end], {
+      color: '#FFD700',
+      weight: 4,
+      opacity: 0.8,
+      dashArray: '10, 5'
+    }).addTo(map);
+    
+    routePolylines.push(polyline);
+  }
+}
     }
 
-    function clearRoutes() {
-      routePolylines.forEach(polyline => map.removeLayer(polyline));
-      routePolylines = [];
-    }
-
+function clearRoutes() {
+  routePolylines.forEach(polyline => map.removeLayer(polyline));
+  routePolylines = [];
+  
+  // Reset route data
+  selectedAfspraken.forEach(afspraak => {
+    delete afspraak.routeDistance;
+    delete afspraak.routeDuration;
+  });
+}
     function updateTravelInfo() {
-      const travelInfo = document.getElementById('travel-info');
-      const travelDetails = document.getElementById('travel-details');
-      
-      if (selectedAfspraken.length < 2) {
-        travelInfo.style.display = 'none';
-        return;
-      }
+  const travelInfo = document.getElementById('travel-info');
+  const travelDetails = document.getElementById('travel-details');
+  
+  if (selectedAfspraken.length < 2) {
+    travelInfo.style.display = 'none';
+    return;
+  }
+  
+  travelInfo.style.display = 'block';
+  travelDetails.innerHTML = '';
+  
+  let totalDistance = 0;
+  let totalTime = 0;
+  
+  for (let i = 0; i < selectedAfspraken.length - 1; i++) {
+    const from = selectedAfspraken[i];
+    const to = selectedAfspraken[i + 1];
+    
+    // Gebruik echte route data als beschikbaar, anders bereken met Haversine
+    const distance = from.routeDistance || getAfstand(from.lat, from.lon, to.lat, to.lon);
+    const estimatedTime = from.routeDuration || Math.round(distance * 1.5);
+    
+    totalDistance += distance;
+    totalTime += estimatedTime;
+    
+    const segment = document.createElement('div');
+    segment.className = 'travel-segment';
+    segment.innerHTML = `
+      <div><i class="fas fa-route"></i> <strong>Van:</strong> ${from.adres} (${from.tijd})</div>
+      <div><i class="fas fa-arrow-down"></i> <strong>Naar:</strong> ${to.adres} (${to.tijd})</div>
+      <div><i class="fas fa-road"></i> <strong>Afstand:</strong> ${distance.toFixed(1)} km ${from.routeDistance ? '(echte route)' : '(geschat)'}</div>
+      <div><i class="fas fa-clock"></i> <strong>Reistijd:</strong> ${Math.round(estimatedTime)} min ${from.routeDuration ? '(via wegen)' : '(geschat)'}</div>
+    `;
+    travelDetails.appendChild(segment);
+  }
+  
+  // Totaal overzicht
+  const totalSegment = document.createElement('div');
+  totalSegment.className = 'travel-segment';
+  totalSegment.style.background = 'rgba(255, 215, 0, 0.2)';
+  totalSegment.style.borderLeft = '4px solid #FFD700';
+  totalSegment.innerHTML = `
+    <div><strong><i class="fas fa-calculator"></i> Totaal overzicht:</strong></div>
+    <div><i class="fas fa-road"></i> <strong>Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
+    <div><i class="fas fa-clock"></i> <strong>Totale reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime/60).toFixed(1)} uur)</div>
+    <div><i class="fas fa-map-marker-alt"></i> <strong>Aantal stops:</strong> ${selectedAfspraken.length}</div>
+  `;
+  travelDetails.appendChild(totalSegment);
+}
       
       travelInfo.style.display = 'block';
       travelDetails.innerHTML = '';
