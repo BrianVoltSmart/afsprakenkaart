@@ -187,30 +187,30 @@
       filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
     }
 
-    .selected-marker {
-      position: relative;
-      z-index: 1000;
-    }
+    .
+.selected-marker {
+  position: relative;
+  z-index: 1000;
+  background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+  border-radius: 50%;
+  padding: 5px;
+  box-shadow: 0 0 15px rgba(22, 33, 62, 0.8);
+}
 
-    .selected-marker::after {
-      content: '';
-      position: absolute;
-      top: -15px;
-      left: -15px;
-      right: -15px;
-      bottom: -15px;
-      background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 70%);
-      border: 3px solid #FFD700;
-      border-radius: 50%;
-      box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
-      animation: pulse 2s infinite;
-      z-index: -1;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-    }
+.selected-marker::after {
+  content: '';
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  right: -15px;
+  bottom: -15px;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 70%);
+  border: 3px solid #FFD700;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
+  animation: pulse 2s infinite;
+  z-index: -1;
+}
 
     #legend {
       padding: 15px 25px;
@@ -985,7 +985,7 @@
       updateTravelInfo();
     }
 
-    function selectMarker(marker) {
+function selectMarker(marker) {
   if (selectedMarkers.includes(marker)) return;
   
   selectedMarkers.push(marker);
@@ -993,12 +993,7 @@
   
   const element = marker.getElement();
   if (element) {
-    // Voeg gradient toe aan geselecteerde marker
-    element.style.background = 'linear-gradient(135deg, #16213e 0%, #0f3460 100%)';
-    element.style.borderRadius = '50%';
-    element.style.padding = '5px';
-    element.style.boxShadow = '0 0 15px rgba(22, 33, 62, 0.8)';
-    
+    element.classList.add('selected-marker');
     const primaryOperator = marker.afspraakData.operators[0];
     const emoji = operatorEmoji[primaryOperator] || "📍";
     const isPast = isAfspraakInPast(marker.afspraakData);
@@ -1014,43 +1009,29 @@ function deselectMarker(marker) {
     
     const element = marker.getElement();
     if (element) {
-      // Verwijder gradient styling
-      element.style.background = '';
-      element.style.borderRadius = '';
-      element.style.padding = '';
-      element.style.boxShadow = '';
-      
+      element.classList.remove('selected-marker');
       const primaryOperator = marker.afspraakData.operators[0];
       const emoji = operatorEmoji[primaryOperator] || "📍";
       const isPast = isAfspraakInPast(marker.afspraakData);
       element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
     }
     
-    // Verwijder route als er minder dan 2 markers geselecteerd zijn
+    // Verwijder route als er minder dan 2 markers over zijn
     if (selectedMarkers.length < 2) {
-      if (routeControl) {
-        map.removeControl(routeControl);
-        routeControl = null;
-      }
-      if (routeLine) {
-        map.removeLayer(routeLine);
-        routeLine = null;
-      }
-      document.getElementById("travel-info").style.display = "none";
+      removeRoute();
     }
   }
 }
 
 function clearSelection() {
+  // Verwijder eerst de route
+  removeRoute();
+  
+  // Verwijder dan de highlights
   selectedMarkers.forEach(marker => {
     const element = marker.getElement();
     if (element) {
-      // Verwijder gradient styling
-      element.style.background = '';
-      element.style.borderRadius = '';
-      element.style.padding = '';
-      element.style.boxShadow = '';
-      
+      element.classList.remove('selected-marker');
       const primaryOperator = marker.afspraakData.operators[0];
       const emoji = operatorEmoji[primaryOperator] || "📍";
       const isPast = isAfspraakInPast(marker.afspraakData);
@@ -1060,20 +1041,24 @@ function clearSelection() {
   
   selectedMarkers = [];
   selectedAfspraken = [];
-  
-  // Verwijder route control
+  document.getElementById("travel-info").style.display = "none";
+}
+
+// Nieuwe hulpfunctie om route te verwijderen
+function removeRoute() {
   if (routeControl) {
     map.removeControl(routeControl);
     routeControl = null;
   }
-  
-  // Verwijder eventuele route lijn
   if (routeLine) {
     map.removeLayer(routeLine);
     routeLine = null;
   }
-  
-  document.getElementById("travel-info").style.display = "none";
+  // Verwijder ook eventuele decorators
+  if (routeDecorator) {
+    map.removeLayer(routeDecorator);
+    routeDecorator = null;
+  }
 }
 
     function updateTravelInfo() {
