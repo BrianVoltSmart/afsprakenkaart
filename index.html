@@ -986,70 +986,95 @@
     }
 
     function selectMarker(marker) {
-      if (selectedMarkers.includes(marker)) return;
-      
-      selectedMarkers.push(marker);
-      selectedAfspraken.push(marker.afspraakData);
-      
-      const element = marker.getElement();
-      if (element) {
-        element.classList.add('selected-marker');
-        // Behoud de emoji door de originele HTML te herstellen
-        const primaryOperator = marker.afspraakData.operators[0];
-        const emoji = operatorEmoji[primaryOperator] || "📍";
-        const isPast = isAfspraakInPast(marker.afspraakData);
-        element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
-      }
-    }
+  if (selectedMarkers.includes(marker)) return;
+  
+  selectedMarkers.push(marker);
+  selectedAfspraken.push(marker.afspraakData);
+  
+  const element = marker.getElement();
+  if (element) {
+    // Voeg gradient toe aan geselecteerde marker
+    element.style.background = 'linear-gradient(135deg, #16213e 0%, #0f3460 100%)';
+    element.style.borderRadius = '50%';
+    element.style.padding = '5px';
+    element.style.boxShadow = '0 0 15px rgba(22, 33, 62, 0.8)';
+    
+    const primaryOperator = marker.afspraakData.operators[0];
+    const emoji = operatorEmoji[primaryOperator] || "📍";
+    const isPast = isAfspraakInPast(marker.afspraakData);
+    element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
+  }
+}
 
-    function deselectMarker(marker) {
-      const index = selectedMarkers.indexOf(marker);
-      if (index > -1) {
-        selectedMarkers.splice(index, 1);
-        selectedAfspraken.splice(index, 1);
-        
-        const element = marker.getElement();
-        if (element) {
-          element.classList.remove('selected-marker');
-          // Behoud de emoji door de originele HTML te herstellen
-          const primaryOperator = marker.afspraakData.operators[0];
-          const emoji = operatorEmoji[primaryOperator] || "📍";
-          const isPast = isAfspraakInPast(marker.afspraakData);
-          element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
-        }
-      }
+function deselectMarker(marker) {
+  const index = selectedMarkers.indexOf(marker);
+  if (index > -1) {
+    selectedMarkers.splice(index, 1);
+    selectedAfspraken.splice(index, 1);
+    
+    const element = marker.getElement();
+    if (element) {
+      // Verwijder gradient styling
+      element.style.background = '';
+      element.style.borderRadius = '';
+      element.style.padding = '';
+      element.style.boxShadow = '';
+      
+      const primaryOperator = marker.afspraakData.operators[0];
+      const emoji = operatorEmoji[primaryOperator] || "📍";
+      const isPast = isAfspraakInPast(marker.afspraakData);
+      element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
     }
-
-    function clearSelection() {
-      selectedMarkers.forEach(marker => {
-        const element = marker.getElement();
-        if (element) {
-          element.classList.remove('selected-marker');
-          // Behoud de emoji door de originele HTML te herstellen
-          const primaryOperator = marker.afspraakData.operators[0];
-          const emoji = operatorEmoji[primaryOperator] || "📍";
-          const isPast = isAfspraakInPast(marker.afspraakData);
-          element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
-        }
-      });
-      
-      selectedMarkers = [];
-      selectedAfspraken = [];
-      
-      // Verwijder route control
+    
+    // Verwijder route als er minder dan 2 markers geselecteerd zijn
+    if (selectedMarkers.length < 2) {
       if (routeControl) {
         map.removeControl(routeControl);
         routeControl = null;
       }
-      
-      // Verwijder eventuele route lijn
       if (routeLine) {
         map.removeLayer(routeLine);
         routeLine = null;
       }
-      
       document.getElementById("travel-info").style.display = "none";
     }
+  }
+}
+
+function clearSelection() {
+  selectedMarkers.forEach(marker => {
+    const element = marker.getElement();
+    if (element) {
+      // Verwijder gradient styling
+      element.style.background = '';
+      element.style.borderRadius = '';
+      element.style.padding = '';
+      element.style.boxShadow = '';
+      
+      const primaryOperator = marker.afspraakData.operators[0];
+      const emoji = operatorEmoji[primaryOperator] || "📍";
+      const isPast = isAfspraakInPast(marker.afspraakData);
+      element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
+    }
+  });
+  
+  selectedMarkers = [];
+  selectedAfspraken = [];
+  
+  // Verwijder route control
+  if (routeControl) {
+    map.removeControl(routeControl);
+    routeControl = null;
+  }
+  
+  // Verwijder eventuele route lijn
+  if (routeLine) {
+    map.removeLayer(routeLine);
+    routeLine = null;
+  }
+  
+  document.getElementById("travel-info").style.display = "none";
+}
 
     function updateTravelInfo() {
       const travelInfo = document.getElementById("travel-info");
