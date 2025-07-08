@@ -14,6 +14,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <!-- Leaflet PolylineDecorator voor gestippelde lijnen -->
   <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
+  <!-- TomTom Maps SDK -->
+  <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps-web.min.js"></script>
+  <link rel='stylesheet' type='text/css' href='https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps.css'>
 
   <style>
     * {
@@ -187,30 +190,41 @@
       filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
     }
 
-    .
-.selected-marker {
-  position: relative;
-  z-index: 1000;
-  background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
-  border-radius: 50%;
-  padding: 5px;
-  box-shadow: 0 0 15px rgba(22, 33, 62, 0.8);
-}
+    .selected-marker {
+      position: relative;
+      z-index: 1000;
+      background: linear-gradient(135deg, rgba(22, 33, 62, 0.8) 0%, rgba(15, 52, 96, 0.8) 100%);
+      border-radius: 50%;
+      padding: 5px;
+      box-shadow: 0 0 20px rgba(22, 33, 62, 0.8);
+      animation: pulse 2s infinite;
+    }
 
-.selected-marker::after {
-  content: '';
-  position: absolute;
-  top: -15px;
-  left: -15px;
-  right: -15px;
-  bottom: -15px;
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 70%);
-  border: 3px solid #FFD700;
-  border-radius: 50%;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
-  animation: pulse 2s infinite;
-  z-index: -1;
-}
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 15px rgba(255, 215, 0, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+      }
+    }
+
+    .selected-marker::after {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      right: -5px;
+      bottom: -5px;
+      background: linear-gradient(135deg, rgba(22, 33, 62, 0.5) 0%, rgba(15, 52, 96, 0.5) 100%);
+      border: 2px solid #FFD700;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
+      z-index: -1;
+    }
 
     #legend {
       padding: 15px 25px;
@@ -493,6 +507,10 @@
       background: rgba(45, 45, 58, 0.9);
     }
 
+    .traffic-toggle.active {
+      color: #4CAF50;
+    }
+
     /* Route line styling */
     .route-line {
       stroke: #FFD700;
@@ -519,6 +537,12 @@
 
     .live-time-indicator i {
       margin-right: 5px;
+    }
+
+    /* TomTom Traffic Layer */
+    .tt-traffic-layer {
+      opacity: 0.7;
+      mix-blend-mode: screen;
     }
   </style>
 </head>
@@ -562,7 +586,7 @@
 
   <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
-    const trafficAPIKey = "YOUR_TRAFFIC_API_KEY"; // Vervang met je eigen API key
+    const trafficAPIKey = "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u"; // Vervang met je eigen TomTom API key
 
     const operatorEmoji = {
       Roelof: "👨‍🌾",
@@ -580,6 +604,7 @@
     let selectedAfspraken = [];
     let routeControl = null;
     let routeLine = null;
+    let routeDecorator = null;
     let markerCluster = new Map();
     let searchResults = [];
     let activeLegendFilter = null;
@@ -669,16 +694,10 @@
 
     function toggleTrafficLayer() {
       if (!trafficLayer) {
-        // Hier zou je een echte traffic API kunnen gebruiken, bijvoorbeeld:
-        // trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${trafficAPIKey}`, {
-        //   maxZoom: 18
-        // });
-        
-        // Voor demo doeleinden gebruiken we een placeholder
-        trafficLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          opacity: 0.5,
+        // TomTom Traffic Layer
+        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u}`, {
           maxZoom: 18,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          className: 'tt-traffic-layer'
         });
       }
       
@@ -686,10 +705,17 @@
         map.removeLayer(trafficLayer);
         liveTrafficEnabled = false;
         document.querySelector('.traffic-toggle').style.color = 'white';
+        document.querySelector('.traffic-toggle').classList.remove('active');
       } else {
         trafficLayer.addTo(map);
         liveTrafficEnabled = true;
         document.querySelector('.traffic-toggle').style.color = '#4CAF50';
+        document.querySelector('.traffic-toggle').classList.add('active');
+        
+        // Update reisinfo om live verkeer indicator te tonen
+        if (selectedAfspraken.length >= 2) {
+          updateTravelInfo();
+        }
       }
     }
 
@@ -985,81 +1011,81 @@
       updateTravelInfo();
     }
 
-function selectMarker(marker) {
-  if (selectedMarkers.includes(marker)) return;
-  
-  selectedMarkers.push(marker);
-  selectedAfspraken.push(marker.afspraakData);
-  
-  const element = marker.getElement();
-  if (element) {
-    element.classList.add('selected-marker');
-    const primaryOperator = marker.afspraakData.operators[0];
-    const emoji = operatorEmoji[primaryOperator] || "📍";
-    const isPast = isAfspraakInPast(marker.afspraakData);
-    element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
-  }
-}
-
-function deselectMarker(marker) {
-  const index = selectedMarkers.indexOf(marker);
-  if (index > -1) {
-    selectedMarkers.splice(index, 1);
-    selectedAfspraken.splice(index, 1);
-    
-    const element = marker.getElement();
-    if (element) {
-      element.classList.remove('selected-marker');
-      const primaryOperator = marker.afspraakData.operators[0];
-      const emoji = operatorEmoji[primaryOperator] || "📍";
-      const isPast = isAfspraakInPast(marker.afspraakData);
-      element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
+    function selectMarker(marker) {
+      if (selectedMarkers.includes(marker)) return;
+      
+      selectedMarkers.push(marker);
+      selectedAfspraken.push(marker.afspraakData);
+      
+      const element = marker.getElement();
+      if (element) {
+        element.classList.add('selected-marker');
+        const primaryOperator = marker.afspraakData.operators[0];
+        const emoji = operatorEmoji[primaryOperator] || "📍";
+        const isPast = isAfspraakInPast(marker.afspraakData);
+        element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
+      }
     }
-    
-    // Verwijder route als er minder dan 2 markers over zijn
-    if (selectedMarkers.length < 2) {
+
+    function deselectMarker(marker) {
+      const index = selectedMarkers.indexOf(marker);
+      if (index > -1) {
+        selectedMarkers.splice(index, 1);
+        selectedAfspraken.splice(index, 1);
+        
+        const element = marker.getElement();
+        if (element) {
+          element.classList.remove('selected-marker');
+          const primaryOperator = marker.afspraakData.operators[0];
+          const emoji = operatorEmoji[primaryOperator] || "📍";
+          const isPast = isAfspraakInPast(marker.afspraakData);
+          element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
+        }
+        
+        // Verwijder route als er minder dan 2 markers over zijn
+        if (selectedMarkers.length < 2) {
+          removeRoute();
+        }
+      }
+    }
+
+    function clearSelection() {
+      // Verwijder eerst de route
       removeRoute();
+      
+      // Verwijder dan de highlights
+      selectedMarkers.forEach(marker => {
+        const element = marker.getElement();
+        if (element) {
+          element.classList.remove('selected-marker');
+          const primaryOperator = marker.afspraakData.operators[0];
+          const emoji = operatorEmoji[primaryOperator] || "📍";
+          const isPast = isAfspraakInPast(marker.afspraakData);
+          element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
+        }
+      });
+      
+      selectedMarkers = [];
+      selectedAfspraken = [];
+      document.getElementById("travel-info").style.display = "none";
     }
-  }
-}
 
-function clearSelection() {
-  // Verwijder eerst de route
-  removeRoute();
-  
-  // Verwijder dan de highlights
-  selectedMarkers.forEach(marker => {
-    const element = marker.getElement();
-    if (element) {
-      element.classList.remove('selected-marker');
-      const primaryOperator = marker.afspraakData.operators[0];
-      const emoji = operatorEmoji[primaryOperator] || "📍";
-      const isPast = isAfspraakInPast(marker.afspraakData);
-      element.innerHTML = `<div class="emoji-div-icon ${isPast ? 'past-appointment' : ''}">${emoji}</div>`;
+    // Nieuwe hulpfunctie om route te verwijderen
+    function removeRoute() {
+      if (routeControl) {
+        map.removeControl(routeControl);
+        routeControl = null;
+      }
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      // Verwijder ook eventuele decorators
+      if (routeDecorator) {
+        map.removeLayer(routeDecorator);
+        routeDecorator = null;
+      }
     }
-  });
-  
-  selectedMarkers = [];
-  selectedAfspraken = [];
-  document.getElementById("travel-info").style.display = "none";
-}
-
-// Nieuwe hulpfunctie om route te verwijderen
-function removeRoute() {
-  if (routeControl) {
-    map.removeControl(routeControl);
-    routeControl = null;
-  }
-  if (routeLine) {
-    map.removeLayer(routeLine);
-    routeLine = null;
-  }
-  // Verwijder ook eventuele decorators
-  if (routeDecorator) {
-    map.removeLayer(routeDecorator);
-    routeDecorator = null;
-  }
-}
 
     function updateTravelInfo() {
       const travelInfo = document.getElementById("travel-info");
@@ -1067,14 +1093,7 @@ function removeRoute() {
       
       if (selectedAfspraken.length < 2) {
         travelInfo.style.display = "none";
-        if (routeControl) {
-          map.removeControl(routeControl);
-          routeControl = null;
-        }
-        if (routeLine) {
-          map.removeLayer(routeLine);
-          routeLine = null;
-        }
+        removeRoute();
         return;
       }
       
@@ -1086,14 +1105,7 @@ function removeRoute() {
       });
       
       // Verwijder bestaande route control
-      if (routeControl) {
-        map.removeControl(routeControl);
-      }
-      
-      // Verwijder eventuele route lijn
-      if (routeLine) {
-        map.removeLayer(routeLine);
-      }
+      removeRoute();
       
       // Maak waypoints voor de route
       const waypoints = sortedAfspraken.map(afspraak => 
@@ -1127,7 +1139,7 @@ function removeRoute() {
         map.removeControl(routeControl);
         routeControl = null;
         
-        // Teken de route lijn met decorator voor gestippeld effect
+        // Teken de route lijn
         if (routeLine) {
           map.removeLayer(routeLine);
         }
@@ -1139,7 +1151,7 @@ function removeRoute() {
         }).addTo(map);
         
         // Voeg decorator toe voor gestippeld effect
-        L.polylineDecorator(routeLine, {
+        routeDecorator = L.polylineDecorator(routeLine, {
           patterns: [
             {
               offset: 0,
@@ -1193,12 +1205,12 @@ function removeRoute() {
             <div><strong><i class="fas fa-map-marker-alt"></i> Van:</strong> ${segment.from} (${segment.fromTime})</div>
             <div><strong><i class="fas fa-map-marker-alt"></i> Naar:</strong> ${segment.to} (${segment.toTime})</div>
             <div><strong><i class="fas fa-route"></i> Afstand:</strong> ${segment.distance} km</div>
-            <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min ${liveTrafficEnabled ? liveTimeIndicator : ''}</div>
+            <div><strong><i class="fas fa-clock"></i> Geschatte reistijd:</strong> ${segment.time} min ${liveTimeIndicator}</div>
           </div>
         `).join('') + `
           <div class="travel-segment" style="background: rgba(255, 215, 0, 0.2); border-left-color: #FFD700;">
             <div><strong><i class="fas fa-chart-line"></i> Totale afstand:</strong> ${totalDistance.toFixed(1)} km</div>
-            <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime / 60).toFixed(1)} uur) ${liveTrafficEnabled ? liveTimeIndicator : ''}</div>
+            <div><strong><i class="fas fa-stopwatch"></i> Totale geschatte reistijd:</strong> ${Math.round(totalTime)} min (${(totalTime / 60).toFixed(1)} uur) ${liveTimeIndicator}</div>
           </div>
         `;
         
