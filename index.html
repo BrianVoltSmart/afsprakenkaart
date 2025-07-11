@@ -581,8 +581,8 @@
   <div id="legend"></div>
 
   <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
-    const trafficAPIKey = "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u"; // TomTom API key, reeds ingevuld
+    t sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu2tdR_UHXSEhvRq0Sga15iSOq9A6dDFfGrgLmtQ5k4oJW1NsBNb604HSecpGI9gqY5AWXjTvzArJQ/pub?output=csv";
+    t trafficAPIKey = "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u"; // TomTom API key, reeds ingevuld
 
     const operatorEmoji = {
       Roelof: "👨‍🌾",
@@ -1243,18 +1243,26 @@ trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relat
         });
     }
 
- async function getTomTomRoute(afspraken) {
+async function getTomTomRoute(afspraken) {
   const waypoints = afspraken.map(a => {
     console.log('Waypoint:', a.lon, a.lat); // Log de coördinaten
-    return `${a.lon},${a.lat}`;
+    return `${a.lon},${a.lat}`; // Let op: TomTom verwacht LON,LAT
   }).join(':');
-  const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u&travelMode=truck&vehicleCommercial=true&vehicleWeight=7500`;
+
+  const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u&travelMode=car`;
 
   try {
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`TomTom API error! status: ${response.status}`);
     }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching TomTom route:", error);
+    throw error;
+  }
+}
+
     return await response.json();
   } catch (error) {
     console.error("Error fetching TomTom route:", error);
