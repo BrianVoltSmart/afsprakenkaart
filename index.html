@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Afsprakenkaart - Premium Edition</title>
   <meta charset="utf-8" />
@@ -51,8 +52,13 @@
     }
 
     @keyframes shimmer {
-      0% { left: -100%; }
-      100% { left: 100%; }
+      0% {
+        left: -100%;
+      }
+
+      100% {
+        left: 100%;
+      }
     }
 
     #title {
@@ -94,6 +100,12 @@
       text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
     }
 
+    #counter .count-week {
+      font-weight: bold;
+      color: #03A9F4;
+      text-shadow: 0 0 10px rgba(3, 169, 244, 0.3);
+    }
+
     #counter .count-total {
       color: #FFC107;
       text-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
@@ -133,7 +145,8 @@
       box-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
     }
 
-    select, input[type="text"] {
+    select,
+    input[type="text"] {
       background: rgba(255, 255, 255, 0.1);
       color: white;
       border: 2px solid rgba(255, 255, 255, 0.2);
@@ -149,7 +162,8 @@
       color: white;
     }
 
-    select:focus, select:hover {
+    select:focus,
+    select:hover {
       border-color: #FFD700;
       box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
       transform: translateY(-2px);
@@ -198,9 +212,11 @@
       0% {
         box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
       }
+
       70% {
         box-shadow: 0 0 0 15px rgba(255, 215, 0, 0);
       }
+
       100% {
         box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
       }
@@ -272,8 +288,15 @@
     }
 
     @keyframes slideUp {
-      from { transform: translateY(20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
 
     .travel-segment {
@@ -337,8 +360,13 @@
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
 
     /* Responsive design */
@@ -359,7 +387,8 @@
         gap: 10px;
       }
 
-      select, input[type="text"] {
+      select,
+      input[type="text"] {
         width: 100%;
       }
 
@@ -414,8 +443,14 @@
     }
 
     @keyframes searchHighlight {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
     }
 
     .past-appointment {
@@ -448,16 +483,22 @@
 
     /* Route line styling */
     .route-line {
-      stroke: #007bff; /* Blauwe kleur voor de lijn */
+      stroke: #007bff;
+      /* Blauwe kleur voor de lijn */
       stroke-width: 4;
-      stroke-dasharray: 20, 10; /* Lengte van de streep, lengte van de ruimte */
-      animation: dash 2s linear infinite; /* Snelheid van de animatie */
+      stroke-dasharray: 20, 10;
+      /* Lengte van de streep, lengte van de ruimte */
+      stroke-dashoffset: 0;
+      /* Startwaarde voor de offset */
+      animation: dash 2s linear infinite;
+      /* Snelheid van de animatie */
       opacity: 0.8;
     }
 
     @keyframes dash {
       to {
-        stroke-dashoffset: -30; /* Schuift de strepen op voor een pulserend effect */
+        stroke-dashoffset: -30;
+        /* Schuift de strepen op voor een pulserend effect */
       }
     }
 
@@ -482,8 +523,21 @@
       opacity: 0.7;
       mix-blend-mode: screen;
     }
+
+    /* Glowing line */
+    .glowing-route {
+      stroke: gold;
+      /* Gouden kleur voor de lijn */
+      stroke-width: 6;
+      /* Dikte van de lijn */
+      opacity: 0.9;
+      /* Maak de lijn semi-transparant */
+      filter: drop-shadow(0 0 7px gold);
+      /* Voeg een gloed toe */
+    }
   </style>
 </head>
+
 <body>
   <div class="loading" id="loading">
     <div class="spinner"></div>
@@ -492,12 +546,16 @@
 
   <div id="topbar">
     <div id="title"><i class="fas fa-map-marked-alt"></i> Afsprakenkaart</div>
-    <img id="logo" src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg" alt="Voltsmart Logo" draggable="false" />
+    <img id="logo"
+      src="https://cdn.prod.website-files.com/68503ddc6fb75a92cad47e2a/68515d53bc9b66440249398b_Logo%20(1).svg"
+      alt="Voltsmart Logo" draggable="false" />
     <div id="counter">
       <div class="count-today"><i class="fas fa-calendar-day"></i> Vandaag: <span id="count-today">0</span></div>
+      <div class="count-week"><i class="fas fa-calendar-week"></i> Deze Week: <span id="count-week">0</span></div>
       <div class="count-total"><i class="fas fa-chart-bar"></i> Totaal: <span id="count-total">0</span></div>
     </div>
     <input type="text" id="searchInput" placeholder="🔍 Zoek adres of postcode" />
+    <button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
   </div>
 
   <div id="controls">
@@ -512,7 +570,7 @@
     <label>
       <input type="checkbox" id="showPastAppointments" checked /> Toon verleden afspraken
     </label>
-    <button id="clear-selection"><i class="fas fa-trash"></i> Wis selectie</button>
+
   </div>
 
   <div id="map"></div>
@@ -582,10 +640,9 @@
           attributionControl: false
         }).setView([52.1, 5.1], 7);
 
-        // Moderne donkere tile layer
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          maxZoom: 18,
+        // Moderne donkere tile layer via TomTom
+        L.tileLayer('https://api.tomtom.com/map/4/tile/basic/main/{z}/{x}/{y}.png?key=' + trafficAPIKey, {
+          attribution: '© TomTom'
         }).addTo(map);
 
         // Custom zoom control
@@ -630,7 +687,7 @@
     function toggleTrafficLayer() {
       if (!trafficLayer) {
         // Controleer of de API key is ingevuld
-        if (!trafficAPIKey || trafficAPIKey === "YOUR_TOMTOM_API_KEY") {
+        if (!trafficAPIKey || trafficAPIKey === "XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u") {
           showError("Voer een geldige TomTom API key in");
           return;
         }
@@ -729,7 +786,15 @@
           if (!adres || !datum || !medewerker || !tijd || isNaN(lat) || isNaN(lon)) continue;
 
           const operators = medewerker.split(",").map((o) => o.trim());
-          afsprakenData.push({ datum, tijd, operators, adres, status, lat, lon });
+          afsprakenData.push({
+            datum,
+            tijd,
+            operators,
+            adres,
+            status,
+            lat,
+            lon
+          });
         }
 
         if (afsprakenData.length === 0) {
@@ -754,6 +819,27 @@
       return `${day}-${month}-${year}`;
     }
 
+    function getWeekStartAndEnd() {
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+      const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is sunday
+      const weekStart = new Date(today.setDate(diff));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+
+      const formatDate = (date) => {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
+
+      return {
+        start: formatDate(weekStart),
+        end: formatDate(weekEnd)
+      };
+    }
+
     function updateCounter() {
       const selectedDatum = document.getElementById("datumSelect").value;
       const selectedOperator = document.getElementById("operatorSelect").value;
@@ -768,10 +854,23 @@
 
       const todayString = getTodayString();
       const todayCount = filteredData.filter(a => a.datum === todayString).length;
+
+      const {
+        start: weekStart,
+        end: weekEnd
+      } = getWeekStartAndEnd();
+      const weekCount = filteredData.filter(a => {
+        const appointmentDate = parseDatum(a.datum);
+        const weekStartDate = parseDatum(weekStart);
+        const weekEndDate = parseDatum(weekEnd);
+        return appointmentDate >= weekStartDate && appointmentDate <= weekEndDate;
+      }).length;
+
       const totalCount = filteredData.length;
 
       // Animatie voor counter updates
       animateCounter("count-today", todayCount);
+      animateCounter("count-week", weekCount);
       animateCounter("count-total", totalCount);
     }
 
@@ -827,7 +926,7 @@
 
       datumSelect.addEventListener("change", updateFunction);
       operatorSelect.addEventListener("change", updateFunction);
-          }
+    }
 
     function buildLegend() {
       const legend = document.getElementById("legend");
@@ -912,7 +1011,9 @@
           className: 'custom-div-icon'
         });
 
-        const marker = L.marker([afspraak.lat, afspraak.lon], { icon })
+        const marker = L.marker([afspraak.lat, afspraak.lon], {
+            icon
+          })
           .addTo(map)
           .bindPopup(`
             <div style="padding: 10px; min-width: 200px;">
@@ -1084,7 +1185,13 @@
 
           // Teken de route lijn met pulserend blauw effect
           routeLine = L.polyline(routeCoordinates, {
-            className: 'route-line' // Gebruik de class voor de pulserende lijn
+            className: 'route-line'
+              // Gebruik de class voor de pulserende lijn
+          }).addTo(map);
+
+          // Create glowing line
+          const glowingLine = L.polyline(routeCoordinates, {
+            className: 'glowing-route'
           }).addTo(map);
 
           // Bereken segmenten
@@ -1153,11 +1260,14 @@
     // Polyline decoder functie (TomTom gebruikt polyline encoding)
     function decodePolyline(encoded) {
       let points = [];
-      let index = 0, len = encoded.length;
-      let lat = 0, lng = 0;
+      let index = 0,
+        len = encoded.length;
+      let lat = 0,
+        lng = 0;
 
       while (index < len) {
-        let b, shift = 0, result = 0;
+        let b, shift = 0,
+          result = 0;
         do {
           b = encoded.charCodeAt(index++) - 63;
           result |= (b & 0x1f) << shift;
@@ -1291,4 +1401,5 @@
     document.addEventListener('DOMContentLoaded', initMap);
   </script>
 </body>
+
 </html>
