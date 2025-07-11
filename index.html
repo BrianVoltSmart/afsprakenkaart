@@ -641,9 +641,11 @@
         }).setView([52.1, 5.1], 7);
 
         // Moderne donkere tile layer via TomTom
-       L.tileLayer('https://api.tomtom.com/map/4/tile/basic/main/{z}/{x}/{y}.png?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u', {
-  attribution: '© TomTom'
+ L.tileLayer('https://api.tomtom.com/map/1/tile/raster/road/{z}/{x}/{y}.png?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u', {
+  attribution: '&copy; TomTom',
+  maxZoom: 20
 }).addTo(map);
+
 
         // Custom zoom control
         L.control.zoom({
@@ -692,12 +694,13 @@
           return;
         }
 
-        trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u`, {
+trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u`, {
   maxZoom: 18,
   className: 'tt-traffic-layer',
   detectRetina: true,
   crossOrigin: true
 });
+
 
         // Voeg een error listener toe voor debugging
         trafficLayer.on('tileerror', function (error) {
