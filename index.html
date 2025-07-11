@@ -1242,11 +1242,10 @@ trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relat
           fallbackTravelInfo(sortedAfspraken);
         });
     }
-
 async function getTomTomRoute(afspraken) {
   const waypoints = afspraken.map(a => {
-    console.log('Waypoint:', a.lon, a.lat); // Log de coördinaten
-    return `${a.lon},${a.lat}`; // Let op: TomTom verwacht LON,LAT
+    console.log('Waypoint:', a.lon, a.lat);
+    return `${a.lon},${a.lat}`; // longitude,latitude
   }).join(':');
 
   const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u&travelMode=car`;
@@ -1256,13 +1255,14 @@ async function getTomTomRoute(afspraken) {
     if (!response.ok) {
       throw new Error(`TomTom API error! status: ${response.status}`);
     }
-    return await response.json();
+
+    const data = await response.json();
+    return data; // ✅ Deze return zit in een functie
   } catch (error) {
     console.error("Error fetching TomTom route:", error);
     throw error;
   }
 }
-
     return await response.json();
   } catch (error) {
     console.error("Error fetching TomTom route:", error);
