@@ -1242,10 +1242,11 @@ trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relat
           fallbackTravelInfo(sortedAfspraken);
         });
     }
+// ✅ Route ophalen via TomTom API
 async function getTomTomRoute(afspraken) {
   const waypoints = afspraken.map(a => {
-    console.log('Waypoint:', a.lon, a.lat);
-    return `${a.lon},${a.lat}`; // longitude,latitude
+    console.log('Waypoint:', a.lon, a.lat); // Log ter controle
+    return `${a.lon},${a.lat}`; // longitude,latitude volgorde vereist door TomTom
   }).join(':');
 
   const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u&travelMode=car`;
@@ -1256,53 +1257,44 @@ async function getTomTomRoute(afspraken) {
       throw new Error(`TomTom API error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data; // ✅ Deze return zit in een functie
-  } catch (error) {
-    console.error("Error fetching TomTom route:", error);
-    throw error;
-  }
-}
-    return await response.json();
+    return await response.json(); // ✅ correct binnen de functie
   } catch (error) {
     console.error("Error fetching TomTom route:", error);
     throw error;
   }
 }
 
-    // Polyline decoder functie (TomTom gebruikt polyline encoding)
-    function decodePolyline(encoded) {
-      let points = [];
-      let index = 0,
-        len = encoded.length;
-      let lat = 0,
-        lng = 0;
+// ✅ Polyline decoder voor TomTom routes
+function decodePolyline(encoded) {
+  let points = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
 
-      while (index < len) {
-        let b, shift = 0,
-          result = 0;
-        do {
-          b = encoded.charCodeAt(index++) - 63;
-          result |= (b & 0x1f) << shift;
-          shift += 5;
-        } while (b >= 0x20);
-        let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        lat += dlat;
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
 
-        shift = 0;
-        result = 0;
-        do {
-          b = encoded.charCodeAt(index++) - 63;
-          result |= (b & 0x1f) << shift;
-          shift += 5;
-        } while (b >= 0x20);
-        let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        lng += dlng;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
 
-        points.push([lat / 1E5, lng / 1E5]);
-      }
-      return points;
-    }
+    points.push([lat / 1E5, lng / 1E5]);
+  }
+
+  return points;
+}
 
     function fallbackTravelInfo(sortedAfspraken) {
       const travelInfo = document.getElementById("travel-info");
