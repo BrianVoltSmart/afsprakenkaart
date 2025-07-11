@@ -1243,7 +1243,7 @@
 
     async function getTomTomRoute(afspraken) {
       const waypoints = afspraken.map(a => `${a.lon},${a.lat}`).join(':');
-      const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=${trafficAPIKey}&travelMode=truck&vehicleCommercial=true&vehicleWeight=7500`;
+      const url = `https://api.tomtom.com/routing/1/calculateRoute/${waypoints}/json?key=XO6WgYJjG2o7fKOyrvycy1rzafzOpE1u{trafficAPIKey}&travelMode=truck&vehicleCommercial=true&vehicleWeight=7500`;
 
       try {
         const response = await fetch(url);
